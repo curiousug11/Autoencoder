@@ -17,7 +17,7 @@ import torch
 import torch.nn as nn
 
 from data import DATA_DIR, make_loader, prepare_splits
-from model import Autoencoder
+from model import ACTIVATIONS, Autoencoder
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -30,6 +30,7 @@ def parse_args():
     p.add_argument("--min-feature-height-ppm", type=float, default=210.0)
     p.add_argument("--hidden", type=int, nargs="+", default=[128, 64, 32, 16])
     p.add_argument("--latent", type=int, default=8)
+    p.add_argument("--activation", default="gelu", choices=sorted(ACTIVATIONS))
     p.add_argument("--epochs", type=int, default=1000)
     p.add_argument("--patience", type=int, default=20, help="early stopping patience (epochs)")
     p.add_argument("--min-delta", type=float, default=1e-3,
@@ -113,7 +114,7 @@ def main():
     val_loader = make_loader(splits["val"], 4096, shuffle=False)
     test_loader = make_loader(splits["test"], 4096, shuffle=False)
 
-    model = Autoencoder(len(wavelength), tuple(args.hidden), args.latent)
+    model = Autoencoder(len(wavelength), tuple(args.hidden), args.latent, ACTIVATIONS[args.activation])
     print(model)
     print(f"parameters: {sum(p.numel() for p in model.parameters())}")
 

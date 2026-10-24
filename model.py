@@ -1,5 +1,17 @@
 import torch.nn as nn
 
+ACTIVATIONS = {
+    "relu": nn.ReLU,
+    "leaky_relu": nn.LeakyReLU,
+    "elu": nn.ELU,
+    "selu": nn.SELU,
+    "gelu": nn.GELU,
+    "silu": nn.SiLU,
+    "mish": nn.Mish,
+    "tanh": nn.Tanh,
+    "softplus": nn.Softplus,
+}
+
 
 def mlp(sizes, activation):
     """Linear layers with `activation` between them; no activation after the last one."""
