@@ -74,3 +74,29 @@ Number of components needed:
 - 99.99%: 39
 
 The scree plot has its clearest break after component 13. The autoencoder with an 8-dimensional bottleneck has a test MSE of 2.0e-4, about 8x lower than PCA with 16 components. So the spectra lie on a nonlinear manifold, and PCA overestimates the number of latent dimensions needed. Treat the PCA value (about 13) as an upper bound for the bottleneck size.
+
+## Bottleneck sweep (`sweep.py`)
+
+The autoencoder was trained with bottleneck sizes 4 to 16, using one seed, the default hyperparameters and early stopping with `--min-delta 1e-3`. Results are in `runs/sweep/`.
+
+| latent | epochs | test MSE | median | p95 |
+|---|---|---|---|---|
+| 4 | 320 | 3.37e-3 | 8.6e-4 | 1.40e-2 |
+| 5 | 358 | 1.31e-3 | 3.1e-4 | 4.8e-3 |
+| 6 | 395 | 4.37e-4 | 1.4e-4 | 1.5e-3 |
+| 7 | 359 | 5.25e-4 | 1.7e-4 | 1.8e-3 |
+| **8** | 747 | **1.96e-4** | 8.9e-5 | 5.9e-4 |
+| 9 | 648 | 1.64e-4 | 7.8e-5 | 4.9e-4 |
+| 10 | 726 | 1.97e-4 | 9.5e-5 | 6.1e-4 |
+| 11 | 841 | 2.12e-4 | 9.8e-5 | 6.5e-4 |
+| 12 | 356 | 4.90e-4 | 1.7e-4 | 1.6e-3 |
+| 13 | 1000 | 1.83e-4 | 8.2e-5 | 5.7e-4 |
+| 14 | 661 | 2.41e-4 | 8.9e-5 | 7.2e-4 |
+| 15 | 579 | 1.80e-4 | 8.8e-5 | 5.5e-4 |
+| 16 | 720 | 1.78e-4 | 8.5e-5 | 5.3e-4 |
+
+- The error drops by about 20x from 4 to 8 latent dimensions.
+- From 8 upwards it levels off at about 1.6 to 2.4e-4, and that variation is within single-seed noise.
+- The 7 and 12 runs stopped early (about 350 epochs), apparently on a temporary plateau in the loss.
+
+Chosen bottleneck: **8**, the smallest size on the plateau. This is consistent with the 9 parameters the spectra were generated from.
