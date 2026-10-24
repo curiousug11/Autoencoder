@@ -1,0 +1,37 @@
+activation=elu seed=42: done
+activation=leaky_relu seed=42: done
+activation=selu seed=42: done
+activation=relu seed=42: done
+activation=silu seed=42: done
+activation=gelu seed=42: done
+activation=mish seed=42: done
+activation=softplus seed=42: done
+activation=tanh seed=42: done
+activation=relu seed=43: done
+activation=leaky_relu seed=43: done
+activation=elu seed=43: done
+activation=selu seed=43: done
+activation=tanh seed=43: done
+activation=gelu seed=43: done
+activation=mish seed=43: done
+activation=softplus seed=43: done
+activation=silu seed=43: done
+activation=relu seed=44: done
+activation=leaky_relu seed=44: done
+activation=elu seed=44: done
+activation=selu seed=44: done
+activation=gelu seed=44: done
+activation=silu seed=44: done
+activation=softplus seed=44: done
+activation=tanh seed=44: done
+activation=mish seed=44: done
+  activation seeds  test MSE mean       std       min    median       p95  epochs  time/s
+        gelu     3       2.73e-04   1.1e-04  1.96e-04  1.12e-04  9.44e-04     571     362
+        tanh     3       3.38e-04   1.8e-04  2.34e-04  1.34e-04  1.12e-03     715     399
+        silu     3       3.58e-04   1.4e-04  2.01e-04  1.25e-04  1.24e-03     601     352
+        mish     3       3.69e-04   1.6e-04  1.83e-04  1.26e-04  1.28e-03     586     466
+         elu     3       3.80e-04   1.7e-04  2.59e-04  1.57e-04  1.21e-03     420     264
+        selu     3       4.34e-04   3.6e-05  3.93e-04  2.31e-04  1.37e-03     406     255
+  leaky_relu     3       4.60e-04   3.2e-05  4.31e-04  2.43e-04  1.46e-03     511     293
+    softplus     3       5.87e-04   2.4e-05  5.67e-04  2.01e-04  1.99e-03     409     254
+        relu     3       8.44e-04   3.0e-04  6.56e-04  4.56e-04  2.66e-03     579     358

@@ -1,0 +1,38 @@
+{
+  "n_total": 98725,
+  "n_kept": 44026,
+  "min_feature_height_ppm": 210.0,
+  "n_test": 6604,
+  "n_val": 6604,
+  "n_train": 30818,
+  "epochs_run": 833,
+  "best_epoch": 830,
+  "train_time_s": 669.7,
+  "best_val_mse": 0.00019252593137593493,
+  "test_mse": 0.00018297516661744083,
+  "test_mse_median": 7.968835416249931e-05,
+  "test_mse_p95": 0.000579186889808625,
+  "args": {
+    "data_dir": "/home/user/Autoencoder/data",
+    "out": "runs/sweep_activation/activation_mish/seed_44",
+    "min_feature_height_ppm": 210.0,
+    "hidden": [
+      128,
+      64,
+      32,
+      16
+    ],
+    "latent": 8,
+    "activation": "mish",
+    "epochs": 1000,
+    "patience": 20,
+    "min_delta": 0.001,
+    "batch_size": 256,
+    "lr": 0.001,
+    "weight_decay": 1e-05,
+    "lr_patience": 7,
+    "lr_factor": 0.5,
+    "seed": 44,
+    "threads": 1
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "n_total": 98725,
+  "n_kept": 44026,
+  "min_feature_height_ppm": 210.0,
+  "n_test": 6604,
+  "n_val": 6604,
+  "n_train": 30818,
+  "epochs_run": 368,
+  "best_epoch": 361,
+  "train_time_s": 203.0,
+  "best_val_mse": 0.0004904171824441158,
+  "test_mse": 0.0005433175308860586,
+  "test_mse_median": 0.0001830256951507181,
+  "test_mse_p95": 0.0018865442834794521,
+  "args": {
+    "data_dir": "/home/user/Autoencoder/data",
+    "out": "runs/sweep_activation/activation_tanh/seed_43",
+    "min_feature_height_ppm": 210.0,
+    "hidden": [
+      128,
+      64,
+      32,
+      16
+    ],
+    "latent": 8,
+    "activation": "tanh",
+    "epochs": 1000,
+    "patience": 20,
+    "min_delta": 0.001,
+    "batch_size": 256,
+    "lr": 0.001,
+    "weight_decay": 1e-05,
+    "lr_patience": 7,
+    "lr_factor": 0.5,
+    "seed": 43,
+    "threads": 1
+  }
+}
