@@ -32,6 +32,8 @@ def parse_args():
     p.add_argument("--latent", type=int, default=8)
     p.add_argument("--epochs", type=int, default=1000)
     p.add_argument("--patience", type=int, default=20, help="early stopping patience (epochs)")
+    p.add_argument("--min-delta", type=float, default=1e-3,
+                   help="relative val-loss improvement needed to reset the early stopping patience")
     p.add_argument("--batch-size", type=int, default=256)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--weight-decay", type=float, default=1e-5)
@@ -121,7 +123,10 @@ def main():
         optimizer, factor=args.lr_factor, patience=args.lr_patience)
 
     history = {"train_loss": [], "val_loss": [], "lr": []}
-    best_val, best_state, best_epoch, bad_epochs = float("inf"), None, -1, 0
+    # best_val/best_state track the lowest val loss seen; ref_val is the last loss that beat
+    # the previous reference by more than min_delta (relative) and drives early stopping.
+    best_val, best_state, best_epoch = float("inf"), None, -1
+    ref_val, bad_epochs = float("inf"), 0
     t0 = time.time()
     for epoch in range(args.epochs):
         train_loss = run_epoch(model, train_loader, loss_fn, optimizer)
@@ -132,8 +137,10 @@ def main():
         history["lr"].append(optimizer.param_groups[0]["lr"])
 
         if val_loss < best_val:
-            best_val, best_epoch, bad_epochs = val_loss, epoch, 0
+            best_val, best_epoch = val_loss, epoch
             best_state = copy.deepcopy(model.state_dict())
+        if val_loss < ref_val * (1 - args.min_delta):
+            ref_val, bad_epochs = val_loss, 0
         else:
             bad_epochs += 1
         if epoch % 10 == 0 or bad_epochs == 0:
