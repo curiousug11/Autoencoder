@@ -225,3 +225,34 @@ For each model, the fraction of its own test spectra flagged is about 5% at p95 
   - The errors on POS's own spectra have a long upper tail (a shoulder near 1e-3.5) that overlaps the anomalous spectra.
   - petitRADTRANS shows a similar but weaker tail.
   - These spectra appear harder to reconstruct at this model size, rather than the earlier result being bad luck with seeds.
+
+### Which planets are poorly reconstructed? (`poor_recon.py`, `runs/anomaly/poor_recon/`)
+
+For each code, the selected anomaly model scores that code's own val + test spectra (13,166 planets, none used in training). The top 5% by reconstruction MSE (658 planets) count as "poorly reconstructed".
+
+The AUC column is the probability that a poorly reconstructed planet has a higher parameter value than a random other planet. 0.5 means no difference, and values far from 0.5 mean a strong link. The parameter names are not stored in the data, so they are labelled p0–p8.
+
+| parameter (range) | POS AUC | petitRADTRANS AUC | TauREx AUC | median: poor vs rest (POS) |
+|---|---|---|---|---|
+| p3 (300–3000) | **0.16** | **0.17** | 0.33 | 768 vs 1940 |
+| p2 (0.01–5) | **0.24** | **0.23** | **0.11** | 0.39 vs 1.94 |
+| p8 (−9 to −3) | 0.62 | 0.63 | 0.55 | −6.9 vs −7.7 |
+| p6 (−9 to −3) | 0.60 | 0.60 | 0.52 | −5.1 vs −6.1 |
+| p5 (−9 to −3) | 0.58 | 0.55 | 0.50 | −6.7 vs −7.4 |
+| p1 (0.1–2) | 0.49 | 0.50 | 0.38 | 1.50 vs 1.50 |
+| p0, p4, p7 | 0.41–0.52 | 0.43–0.49 | 0.44–0.52 | |
+| feature height | 0.52 | 0.55 | 0.66 | 800 vs 793 ppm |
+
+- **Low p3 and low p2 are the strongest markers in every code.** Most poorly reconstructed spectra have p3 below about 1000 and/or p2 below about 0.5. Reconstruction error rises steeply as p2 approaches 0.
+- **POS and petitRADTRANS:** p3 is the strongest marker. The poor planets also tend to have higher p5, p6 and p8, which places them in the part of the prior where p5 and p8 are above −7. p5 and p8 are anti-correlated with p3 in the parameter prior.
+- **TauREx:** p2 dominates (AUC 0.11), and low p1 matters too.
+- **Feature height is not the cause.** Poorly reconstructed spectra are not those close to the 210 ppm cut.
+- **The same planets are hard in every code.**
+  - POS and petitRADTRANS share 479 of their 658 poor planets; 33 would be expected by chance. The Spearman correlation of their per-planet errors is 0.92.
+  - POS and TauREx share 331, and petitRADTRANS and TauREx share 349.
+  - 291 planets are in the poor set of all three codes.
+  - So the difficulty comes from the planet's parameters, not from the code. This low-p3 / low-p2 region is what causes the overlap between normal and anomalous errors in the anomaly histograms.
+
+```
+python poor_recon.py --top-frac 0.05 --param-names p0 p1 p2 p3 p4 p5 p6 p7 p8
+```
