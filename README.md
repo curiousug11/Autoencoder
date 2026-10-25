@@ -152,3 +152,21 @@ python sweep.py --param scheduler --values cosine --seeds 42 43 44 --workers 3 -
 - The median is about 5x lower.
 - All seeds ran the full 1000 epochs.
 - A gap between train and val loss now appears (about 4e-5 vs 6e-5).
+
+## Comparison: width vs schedule (`runs/ablation/`)
+
+This 2×2 comparison uses seeds 42 and 43 in every configuration, so results can be compared seed for seed. All runs use GELU and a bottleneck of 8. The new runs are launched by `runs/ablation/run.sh`; the other two rows come from earlier runs.
+
+| hidden layers | schedule, patience | seed 42 | seed 43 | mean | source |
+|---|---|---|---|---|---|
+| 128-64-32-16 | plateau, 20 | 1.96e-4 | 2.20e-4 | 2.08e-4 | `runs/sweep_activation/activation_gelu` |
+| 128-64-32-16 | cosine, 50 | 1.13e-4 | 1.07e-4 | 1.10e-4 | `runs/ablation/small_cosine_p50` |
+| 256-128-64-32-16 | plateau, 20 | 3.23e-4 * | 1.20e-4 | — | `runs/ablation/wide_plateau_p20` |
+| 256-128-64-32-16 | cosine, 50 | 5.97e-5 | 7.13e-5 | 6.55e-5 | `runs/ae_wide_cosine` |
+
+\* Stopped early at epoch 334: the plateau schedule had already lowered the learning rate to 4e-6, and the run stalled.
+
+- **Cosine schedule with patience 50, alone:** about 1.9x lower test MSE (2.08e-4 to 1.10e-4). Both cosine runs train the full 1000 epochs and are consistent across seeds.
+- **Wider model, alone:** about 1.8x lower (seed 43: 2.20e-4 to 1.20e-4), as long as training doesn't stall.
+- **Both together:** about 3.2x lower. The two effects roughly multiply.
+- **The plateau schedule with patience 20 is unreliable.** The learning rate can shrink too quickly, and the run then stops early on a temporary plateau. Cosine with patience 50 avoids this.

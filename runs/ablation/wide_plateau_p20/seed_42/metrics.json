@@ -1,0 +1,41 @@
+{
+  "n_total": 98725,
+  "n_kept": 44026,
+  "min_feature_height_ppm": 210.0,
+  "n_test": 6604,
+  "n_val": 6604,
+  "n_train": 30818,
+  "epochs_run": 334,
+  "best_epoch": 326,
+  "train_time_s": 344.4,
+  "best_val_mse": 0.00031308236478747226,
+  "test_mse": 0.00032317584508416246,
+  "test_mse_median": 8.397539204452187e-05,
+  "test_mse_p95": 0.0011165275936946273,
+  "args": {
+    "data_dir": "/home/user/Autoencoder/data",
+    "out": "runs/ablation/wide_plateau_p20/seed_42",
+    "min_feature_height_ppm": 210.0,
+    "hidden": [
+      256,
+      128,
+      64,
+      32,
+      16
+    ],
+    "latent": 8,
+    "activation": "gelu",
+    "epochs": 1000,
+    "patience": 20,
+    "min_delta": 0.001,
+    "batch_size": 256,
+    "lr": 0.001,
+    "weight_decay": 1e-05,
+    "scheduler": "plateau",
+    "lr_patience": 7,
+    "lr_factor": 0.5,
+    "min_lr": 1e-06,
+    "seed": 42,
+    "threads": 1
+  }
+}
