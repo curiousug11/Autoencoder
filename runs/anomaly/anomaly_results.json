@@ -1,5 +1,9 @@
 {
   "pos": {
+    "model_run": "train_pos",
+    "candidate_val_mse": {
+      "train_pos": 0.00022812463149828244
+    },
     "thresholds_from_val": {
       "p95": 0.0008423447143286467,
       "p99": 0.0029035855550318956
@@ -28,6 +32,10 @@
     }
   },
   "prt": {
+    "model_run": "train_prt",
+    "candidate_val_mse": {
+      "train_prt": 0.0002557984312639259
+    },
     "thresholds_from_val": {
       "p95": 0.0008648488437756896,
       "p99": 0.0034691262990236282
@@ -56,6 +64,10 @@
     }
   },
   "taurex": {
+    "model_run": "train_taurex",
+    "candidate_val_mse": {
+      "train_taurex": 5.0882523018898365e-05
+    },
     "thresholds_from_val": {
       "p95": 0.00015783682465553284,
       "p99": 0.0005325505044311285
