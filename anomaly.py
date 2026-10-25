@@ -11,6 +11,10 @@ train/val/test split. The test planets were never seen in training, in any code.
 Usage:
     python anomaly.py                    # train the 3 models (in parallel) and evaluate
     python anomaly.py --eval-only        # re-evaluate existing models
+    python anomaly.py --train-datasets pos prt --init-seeds 43 44   # extra seeds for some codes
+
+When a code has several trained runs (different init seeds), evaluation uses the one with
+the lowest validation loss on that code's own spectra; no anomalous data is used to choose.
     python anomaly.py -- --epochs 50     # extra train.py arguments after '--'
 """
 
@@ -41,7 +45,11 @@ def parse_args():
     p.add_argument("--data-dir", default=str(DATA_DIR))
     p.add_argument("--out", default="runs/anomaly")
     p.add_argument("--datasets", nargs="+", default=list(DATASETS), choices=DATASETS)
-    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--seed", type=int, default=42, help="split seed, shared by all codes")
+    p.add_argument("--train-datasets", nargs="+", default=None, choices=DATASETS,
+                   help="codes to train (default: all of --datasets)")
+    p.add_argument("--init-seeds", type=int, nargs="+", default=None,
+                   help="weight-init seeds to train for each code (default: --seed)")
     p.add_argument("--min-feature-height-ppm", type=float, default=210.0)
     p.add_argument("--eval-only", action="store_true")
     p.add_argument("train_args", nargs=argparse.REMAINDER,
@@ -49,16 +57,31 @@ def parse_args():
     return p.parse_args()
 
 
-def train_one(dataset, args, extra):
-    d = Path(args.out) / f"train_{dataset}"
+def run_dir(out, dataset, init_seed, split_seed):
+    name = f"train_{dataset}" if init_seed == split_seed else f"train_{dataset}_seed{init_seed}"
+    return Path(out) / name
+
+
+def train_one(job, args, extra):
+    dataset, init_seed = job
+    d = run_dir(args.out, dataset, init_seed, args.seed)
     d.mkdir(parents=True, exist_ok=True)
     cmd = [sys.executable, "train.py", "--dataset", dataset, "--cut-datasets", *args.datasets,
-           "--seed", str(args.seed), "--min-feature-height-ppm", str(args.min_feature_height_ppm),
+           "--seed", str(init_seed), "--split-seed", str(args.seed),
+           "--min-feature-height-ppm", str(args.min_feature_height_ppm),
            "--data-dir", args.data_dir, "--threads", "1", "--out", str(d), *TRAIN_ARGS, *extra]
     with open(d / "train.log", "w") as log:
         code = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT).returncode
-    print(f"train {dataset}: {'done' if code == 0 else f'FAILED (exit {code})'}", flush=True)
+    print(f"train {dataset} seed {init_seed}: {'done' if code == 0 else f'FAILED (exit {code})'}", flush=True)
     return code
+
+
+def select_run(out, dataset):
+    """Among the finished runs for `dataset`, return the one with the lowest own-code val loss."""
+    runs = [p.parent for p in Path(out).glob(f"train_{dataset}*/metrics.json")
+            if p.parent.name == f"train_{dataset}" or p.parent.name.startswith(f"train_{dataset}_seed")]
+    vals = {r: json.loads((r / "metrics.json").read_text())["best_val_mse"] for r in runs}
+    return min(vals, key=vals.get), {r.name: v for r, v in sorted(vals.items())}
 
 
 def load_model(path):
@@ -100,12 +123,14 @@ def evaluate(args):
 
     scores, results = {}, {}
     for trained in args.datasets:
-        model = load_model(out / f"train_{trained}" / "model.pt")
+        chosen, candidates = select_run(out, trained)
+        model = load_model(chosen / "model.pt")
         val_err = per_spectrum_mse(model, data[trained]["val"].spectra)
         thresholds = {q: float(np.percentile(val_err, q)) for q in (95, 99)}
         scores[trained] = {d: per_spectrum_mse(model, data[d]["test"].spectra) for d in args.datasets}
         normal = scores[trained][trained]
-        res = {"thresholds_from_val": {f"p{q}": t for q, t in thresholds.items()}, "tested_on": {}}
+        res = {"model_run": chosen.name, "candidate_val_mse": candidates,
+               "thresholds_from_val": {f"p{q}": t for q, t in thresholds.items()}, "tested_on": {}}
         for d in args.datasets:
             s = scores[trained][d]
             r = {"mse_mean": float(s.mean()), "mse_median": float(np.median(s)),
@@ -122,7 +147,7 @@ def evaluate(args):
     print(f"test planets: {len(test_index)}")
     for trained in args.datasets:
         r = results[trained]
-        print(f"\ntrained on {LABELS[trained]} (val p95 threshold {r['thresholds_from_val']['p95']:.2e}, "
+        print(f"\ntrained on {LABELS[trained]}, model {r['model_run']} (val p95 threshold {r['thresholds_from_val']['p95']:.2e}, "
               f"p99 {r['thresholds_from_val']['p99']:.2e})")
         print(f"  {'tested on':<15} {'median MSE':>11} {'mean MSE':>10} {'AUC':>6} {'>p95':>7} {'>p99':>7}")
         for d, t in r["tested_on"].items():
@@ -178,8 +203,9 @@ def main():
     Path(args.out).mkdir(parents=True, exist_ok=True)
     extra = [a for a in args.train_args if a != "--"]
     if not args.eval_only:
-        with ThreadPoolExecutor(len(args.datasets)) as pool:
-            codes = list(pool.map(lambda d: train_one(d, args, extra), args.datasets))
+        jobs = [(d, s) for d in (args.train_datasets or args.datasets) for s in (args.init_seeds or [args.seed])]
+        with ThreadPoolExecutor(min(len(jobs), 4)) as pool:
+            codes = list(pool.map(lambda job: train_one(job, args, extra), jobs))
         if any(codes):
             sys.exit("training failed; see train.log in the run directories")
     evaluate(args)

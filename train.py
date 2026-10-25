@@ -46,7 +46,9 @@ def parse_args():
     p.add_argument("--lr-patience", type=int, default=7, help="ReduceLROnPlateau patience (epochs)")
     p.add_argument("--lr-factor", type=float, default=0.5)
     p.add_argument("--min-lr", type=float, default=1e-6, help="final learning rate for the cosine schedule")
-    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--seed", type=int, default=42, help="seed for weight init and batch order")
+    p.add_argument("--split-seed", type=int, default=None,
+                   help="seed for the train/val/test split (default: --seed)")
     p.add_argument("--threads", type=int, default=None)
     return p.parse_args()
 
@@ -112,7 +114,8 @@ def main():
         torch.set_num_threads(args.threads)
 
     splits, wavelength, data_info = prepare_splits(
-        args.data_dir, args.min_feature_height_ppm, seed=args.seed,
+        args.data_dir, args.min_feature_height_ppm,
+        seed=args.seed if args.split_seed is None else args.split_seed,
         dataset=args.dataset, cut_datasets=args.cut_datasets)
     print(json.dumps(data_info, indent=2))
     np.savez(out / "split_indices.npz", **{k: s.index for k, s in splits.items()})
