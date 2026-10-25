@@ -1,0 +1,24 @@
+train prt: done
+train taurex: done
+train pos: done
+test planets: 6583
+
+trained on POS (val p95 threshold 8.42e-04, p99 2.90e-03)
+  tested on        median MSE   mean MSE    AUC    >p95    >p99
+  POS                4.60e-05   2.44e-04    -      4.9%    1.2%
+  petitRADTRANS      1.69e-03   3.11e-03  0.955   77.4%   28.6%
+  TauREx             1.90e-03   2.73e-03  0.956   73.5%   33.9%
+
+trained on petitRADTRANS (val p95 threshold 8.65e-04, p99 3.47e-03)
+  tested on        median MSE   mean MSE    AUC    >p95    >p99
+  POS                1.77e-03   2.32e-03  0.950   78.3%   19.6%
+  petitRADTRANS      6.52e-05   2.72e-04    -      5.6%    0.9%
+  TauREx             1.58e-03   2.18e-03  0.945   71.8%   18.1%
+
+trained on TauREx (val p95 threshold 1.58e-04, p99 5.33e-04)
+  tested on        median MSE   mean MSE    AUC    >p95    >p99
+  POS                1.58e-03   2.20e-03  0.992   97.7%   79.5%
+  petitRADTRANS      1.25e-03   2.57e-03  0.988   95.8%   78.4%
+  TauREx             2.14e-05   5.54e-05    -      5.0%    1.0%
+
+saved to runs/anomaly/

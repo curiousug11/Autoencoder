@@ -176,3 +176,39 @@ This 2×2 comparison uses seeds 42 and 43 in every configuration, so results can
 - **Wider model, alone:** about 1.8x lower (seed 43: 2.20e-4 to 1.20e-4), as long as training doesn't stall.
 - **Both together:** about 3.2x lower. The two effects roughly multiply.
 - **The plateau schedule with patience 20 is unreliable.** The learning rate can shrink too quickly, and the run then stops early on a temporary plateau. Cosine with patience 50 avoids this.
+
+## Cross-code anomaly detection (`anomaly.py`, `runs/anomaly/`)
+
+One autoencoder is trained per radiative-transfer code. It is then tested on held-out planets from its own code (normal) and from the other two codes (anomalous).
+
+**Data**
+- **Shared feature cut:** a planet is kept only if it passes the 210 ppm cut in all three codes. 43,885 planets remain.
+- **Normalisation:** each spectrum is z-normalised on its own.
+- **Shared split:** all codes use one train/val/test split of 30,719 / 6,583 / 6,583 planets. Test planets are unseen in every code.
+
+**Model:** `52-256-128-64-32-16-8`, GELU, cosine schedule, patience 50, seed 42.
+
+```
+python anomaly.py            # trains the 3 models in parallel, then evaluates
+python anomaly.py --eval-only
+```
+
+**Scoring:** the anomaly score is the per-spectrum reconstruction MSE. Thresholds are the 95th and 99th percentiles of the model's error on its own validation spectra.
+
+| trained on | own test MSE (median / mean) | tested on | AUC | flagged at p95 | flagged at p99 |
+|---|---|---|---|---|---|
+| POS | 4.6e-5 / 2.4e-4 | petitRADTRANS | 0.955 | 77% | 29% |
+| | | TauREx | 0.956 | 74% | 34% |
+| petitRADTRANS | 6.5e-5 / 2.7e-4 | POS | 0.950 | 78% | 20% |
+| | | TauREx | 0.945 | 72% | 18% |
+| TauREx | 2.1e-5 / 5.5e-5 | POS | **0.992** | 98% | 79% |
+| | | petitRADTRANS | **0.988** | 96% | 78% |
+
+For each model, the fraction of its own test spectra flagged is 5% at p95 and 1% at p99, as expected.
+
+- **The autoencoders separate the codes clearly in every pairing.** Spectra from other codes have reconstruction errors about 30–80x higher (in median) than spectra from the training code. AUC is between 0.945 and 0.992.
+- **The TauREx model separates best because it reconstructs its own spectra best.** It trained the full 1000 epochs, and its own errors are about 4x lower than those of the other two models.
+- **The POS and petitRADTRANS models are under-trained compared with the TauREx model.**
+  - The POS run stayed on a plateau at about 2.3e-4 val MSE. An earlier POS run with the same configuration reached 6e-5.
+  - The petitRADTRANS run stopped early at epoch 487.
+  - Their own-code error distributions have a long upper tail that overlaps the anomalous spectra. So their AUCs are probably underestimates.
