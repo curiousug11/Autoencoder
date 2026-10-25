@@ -1,0 +1,25 @@
+train prt seed 43: done
+train pos seed 44: done
+train prt seed 44: done
+train pos seed 43: done
+test planets: 6583
+
+trained on POS, model train_pos_seed44 (val p95 threshold 6.54e-04, p99 2.79e-03)
+  tested on        median MSE   mean MSE    AUC    >p95    >p99
+  POS                3.89e-05   1.96e-04    -      4.9%    1.1%
+  petitRADTRANS      1.65e-03   3.14e-03  0.962   83.2%   29.4%
+  TauREx             1.80e-03   2.52e-03  0.964   78.2%   33.5%
+
+trained on petitRADTRANS, model train_prt_seed44 (val p95 threshold 4.70e-04, p99 2.01e-03)
+  tested on        median MSE   mean MSE    AUC    >p95    >p99
+  POS                1.59e-03   2.27e-03  0.970   87.7%   38.3%
+  petitRADTRANS      2.86e-05   1.56e-04    -      4.8%    1.1%
+  TauREx             1.39e-03   2.07e-03  0.967   84.9%   32.6%
+
+trained on TauREx, model train_taurex (val p95 threshold 1.58e-04, p99 5.33e-04)
+  tested on        median MSE   mean MSE    AUC    >p95    >p99
+  POS                1.58e-03   2.20e-03  0.992   97.7%   79.5%
+  petitRADTRANS      1.25e-03   2.57e-03  0.988   95.8%   78.4%
+  TauREx             2.14e-05   5.54e-05    -      5.0%    1.0%
+
+saved to runs/anomaly/

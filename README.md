@@ -186,29 +186,42 @@ One autoencoder is trained per radiative-transfer code. It is then tested on hel
 - **Normalisation:** each spectrum is z-normalised on its own.
 - **Shared split:** all codes use one train/val/test split of 30,719 / 6,583 / 6,583 planets. Test planets are unseen in every code.
 
-**Model:** `52-256-128-64-32-16-8`, GELU, cosine schedule, patience 50, seed 42.
+**Model:** `52-256-128-64-32-16-8`, GELU, cosine schedule, patience 50.
+- POS and petitRADTRANS were trained with 3 init seeds each (42, 43, 44). TauREx was trained with seed 42 only.
+- All runs use the same split (split seed 42).
+- For each code, evaluation uses the run with the lowest validation loss on that code's own spectra. No anomalous data is used to choose.
 
 ```
-python anomaly.py            # trains the 3 models in parallel, then evaluates
+python anomaly.py                                              # trains the 3 models in parallel, then evaluates
+python anomaly.py --train-datasets pos prt --init-seeds 43 44  # extra seeds, then re-evaluate
 python anomaly.py --eval-only
 ```
 
-**Scoring:** the anomaly score is the per-spectrum reconstruction MSE. Thresholds are the 95th and 99th percentiles of the model's error on its own validation spectra.
+Own-code validation MSE for each run (the selected run in bold):
+
+| code | seed 42 | seed 43 | seed 44 |
+|---|---|---|---|
+| POS | 2.28e-4 | 2.30e-4 | **2.00e-4** |
+| petitRADTRANS | 2.56e-4 (stopped at epoch 487) | 2.74e-4 (stopped at 802) | **1.51e-4** |
+| TauREx | **5.09e-5** | — | — |
+
+**Scoring:** the anomaly score is the per-spectrum reconstruction MSE. Thresholds are the 95th and 99th percentiles of the selected model's error on its own validation spectra.
 
 | trained on | own test MSE (median / mean) | tested on | AUC | flagged at p95 | flagged at p99 |
 |---|---|---|---|---|---|
-| POS | 4.6e-5 / 2.4e-4 | petitRADTRANS | 0.955 | 77% | 29% |
-| | | TauREx | 0.956 | 74% | 34% |
-| petitRADTRANS | 6.5e-5 / 2.7e-4 | POS | 0.950 | 78% | 20% |
-| | | TauREx | 0.945 | 72% | 18% |
+| POS | 3.9e-5 / 2.0e-4 | petitRADTRANS | 0.962 | 83% | 29% |
+| | | TauREx | 0.964 | 78% | 34% |
+| petitRADTRANS | 2.9e-5 / 1.6e-4 | POS | 0.970 | 88% | 38% |
+| | | TauREx | 0.967 | 85% | 33% |
 | TauREx | 2.1e-5 / 5.5e-5 | POS | **0.992** | 98% | 79% |
 | | | petitRADTRANS | **0.988** | 96% | 78% |
 
-For each model, the fraction of its own test spectra flagged is 5% at p95 and 1% at p99, as expected.
+For each model, the fraction of its own test spectra flagged is about 5% at p95 and 1% at p99, as expected.
 
-- **The autoencoders separate the codes clearly in every pairing.** Spectra from other codes have reconstruction errors about 30–80x higher (in median) than spectra from the training code. AUC is between 0.945 and 0.992.
-- **The TauREx model separates best because it reconstructs its own spectra best.** It trained the full 1000 epochs, and its own errors are about 4x lower than those of the other two models.
-- **The POS and petitRADTRANS models are under-trained compared with the TauREx model.**
-  - The POS run stayed on a plateau at about 2.3e-4 val MSE. An earlier POS run with the same configuration reached 6e-5.
-  - The petitRADTRANS run stopped early at epoch 487.
-  - Their own-code error distributions have a long upper tail that overlaps the anomalous spectra. So their AUCs are probably underestimates.
+- **The autoencoders separate the codes clearly in every pairing.** Spectra from other codes have reconstruction errors about 40–80x higher (in median) than spectra from the training code. AUC is between 0.962 and 0.992.
+- **Retraining with more seeds improved the POS and petitRADTRANS models.** Their AUCs rose from 0.945–0.956 (seed 42) to 0.962–0.970, and their 95th-percentile flag rates rose by 5–13 points.
+- **The TauREx model still separates best.**
+  - All three POS seeds plateau at a val MSE of 2.0–2.3e-4, about 4x worse than TauREx.
+  - The errors on POS's own spectra have a long upper tail (a shoulder near 1e-3.5) that overlaps the anomalous spectra.
+  - petitRADTRANS shows a similar but weaker tail.
+  - These spectra appear harder to reconstruct at this model size, rather than the earlier result being bad luck with seeds.

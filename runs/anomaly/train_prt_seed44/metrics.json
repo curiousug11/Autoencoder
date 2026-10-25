@@ -1,0 +1,54 @@
+{
+  "dataset": "prt",
+  "cut_datasets": [
+    "pos",
+    "prt",
+    "taurex"
+  ],
+  "n_total": 98725,
+  "n_kept": 43885,
+  "min_feature_height_ppm": 210.0,
+  "n_test": 6583,
+  "n_val": 6583,
+  "n_train": 30719,
+  "epochs_run": 1000,
+  "best_epoch": 995,
+  "train_time_s": 922.6,
+  "best_val_mse": 0.00015074160042037848,
+  "test_mse": 0.0001557360698066879,
+  "test_mse_median": 2.862686051230412e-05,
+  "test_mse_p95": 0.00044703122694045305,
+  "args": {
+    "data_dir": "/home/user/Autoencoder/data",
+    "out": "runs/anomaly/train_prt_seed44",
+    "dataset": "prt",
+    "cut_datasets": [
+      "pos",
+      "prt",
+      "taurex"
+    ],
+    "min_feature_height_ppm": 210.0,
+    "hidden": [
+      256,
+      128,
+      64,
+      32,
+      16
+    ],
+    "latent": 8,
+    "activation": "gelu",
+    "epochs": 1000,
+    "patience": 50,
+    "min_delta": 0.001,
+    "batch_size": 256,
+    "lr": 0.001,
+    "weight_decay": 1e-05,
+    "scheduler": "cosine",
+    "lr_patience": 7,
+    "lr_factor": 0.5,
+    "min_lr": 1e-06,
+    "seed": 44,
+    "split_seed": 42,
+    "threads": 1
+  }
+}
