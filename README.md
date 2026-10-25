@@ -8,7 +8,13 @@ Fully connected autoencoder for binned transmission spectra (POS dataset).
 |---|---|---|
 | `pos_spec_binned.npy` | (98725, 52) | binned spectra (transit depth, fraction) |
 | `pos_params_clean.npy` | (98725, 9) | planet parameters per spectrum |
+| `prt_spec_binned.npy` | (98725, 52) | binned spectra from petitRADTRANS |
+| `prt_params_clean.npy` | (98725, 9) | parameters for the petitRADTRANS spectra |
+| `taurex_spec_binned.npy` | (98725, 52) | binned spectra from TauREx |
+| `taurex_params_clean.npy` | (98725, 9) | parameters for the TauREx spectra |
 | `wavelength_binned.npy` | (52,) | wavelength grid (µm, descending) |
+
+All three parameter files are identical: row *i* is the same planet in POS, petitRADTRANS and TauREx.
 
 ## Preprocessing (`data.py`)
 
