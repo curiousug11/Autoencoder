@@ -16,7 +16,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from data import DATA_DIR, make_loader, prepare_splits
+from data import DATA_DIR, DATASETS, make_loader, prepare_splits
 from model import ACTIVATIONS, Autoencoder
 
 matplotlib.use("Agg")
@@ -27,6 +27,9 @@ def parse_args():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--data-dir", default=str(DATA_DIR))
     p.add_argument("--out", default="runs/ae_baseline")
+    p.add_argument("--dataset", default="pos", choices=DATASETS)
+    p.add_argument("--cut-datasets", nargs="+", choices=DATASETS, default=None,
+                   help="keep only planets passing the feature-height cut in all of these (default: --dataset)")
     p.add_argument("--min-feature-height-ppm", type=float, default=210.0)
     p.add_argument("--hidden", type=int, nargs="+", default=[128, 64, 32, 16])
     p.add_argument("--latent", type=int, default=8)
@@ -109,7 +112,8 @@ def main():
         torch.set_num_threads(args.threads)
 
     splits, wavelength, data_info = prepare_splits(
-        args.data_dir, args.min_feature_height_ppm, seed=args.seed)
+        args.data_dir, args.min_feature_height_ppm, seed=args.seed,
+        dataset=args.dataset, cut_datasets=args.cut_datasets)
     print(json.dumps(data_info, indent=2))
     np.savez(out / "split_indices.npz", **{k: s.index for k, s in splits.items()})
 

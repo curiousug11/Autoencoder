@@ -1,7 +1,9 @@
-"""Loading and preprocessing of the binned POS spectra.
+"""Loading and preprocessing of the binned spectra (POS, petitRADTRANS, TauREx).
 
 Pipeline (in this order):
   1. Feature-height cut: keep spectra with max(spec) - min(spec) >= 210 ppm.
+     With cut_datasets, a planet is kept only if it passes the cut in every listed
+     dataset, so all datasets keep the same planets (rows are the same planets in all files).
   2. Z-normalisation per spectrum: (spec - mean(spec)) / std(spec).
   3. Random train / val / test split.
 """
@@ -14,6 +16,7 @@ import torch
 from torch.utils.data import DataLoader, TensorDataset
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
+DATASETS = ("pos", "prt", "taurex")
 
 
 @dataclass
@@ -35,10 +38,10 @@ def znormalise(spectra):
     return (spectra - mean) / std, mean[:, 0], std[:, 0]
 
 
-def load_raw(data_dir=DATA_DIR):
+def load_raw(data_dir=DATA_DIR, dataset="pos"):
     data_dir = Path(data_dir)
-    spectra = np.load(data_dir / "pos_spec_binned.npy")
-    params = np.load(data_dir / "pos_params_clean.npy")
+    spectra = np.load(data_dir / f"{dataset}_spec_binned.npy")
+    params = np.load(data_dir / f"{dataset}_params_clean.npy")
     wavelength = np.load(data_dir / "wavelength_binned.npy")
     assert spectra.shape[0] == params.shape[0]
     assert spectra.shape[1] == wavelength.shape[0]
@@ -46,16 +49,23 @@ def load_raw(data_dir=DATA_DIR):
 
 
 def prepare_splits(data_dir=DATA_DIR, min_feature_height_ppm=210.0,
-                   val_frac=0.15, test_frac=0.15, seed=42):
+                   val_frac=0.15, test_frac=0.15, seed=42, dataset="pos", cut_datasets=None):
     """Apply the feature-height cut, z-normalise, and split.
 
     Spectra are transit depths as fractions, so the cut in ppm is scaled by 1e-6.
+    cut_datasets (default: just `dataset`) lists the datasets a planet must pass the cut in.
+    The split depends only on the kept rows and the seed, so datasets prepared with the
+    same cut_datasets and seed share identical train/val/test planets.
     Returns (splits dict with keys 'train'/'val'/'test', wavelength, info dict).
     """
-    spectra, params, wavelength = load_raw(data_dir)
+    spectra, params, wavelength = load_raw(data_dir, dataset)
 
+    passed = np.ones(len(spectra), dtype=bool)
+    for name in cut_datasets or (dataset,):
+        other = spectra if name == dataset else load_raw(data_dir, name)[0]
+        passed &= feature_height(other) >= min_feature_height_ppm * 1e-6
     fh = feature_height(spectra)
-    keep = np.flatnonzero(fh >= min_feature_height_ppm * 1e-6)
+    keep = np.flatnonzero(passed)
     spectra, params = spectra[keep], params[keep]
 
     spectra_z, mean, std = znormalise(spectra)
@@ -74,6 +84,8 @@ def prepare_splits(data_dir=DATA_DIR, min_feature_height_ppm=210.0,
         for name, idx in parts.items()
     }
     info = {
+        "dataset": dataset,
+        "cut_datasets": list(cut_datasets or (dataset,)),
         "n_total": int(len(fh)),
         "n_kept": int(len(keep)),
         "min_feature_height_ppm": float(min_feature_height_ppm),
