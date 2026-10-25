@@ -38,8 +38,11 @@ def parse_args():
     p.add_argument("--batch-size", type=int, default=256)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--weight-decay", type=float, default=1e-5)
+    p.add_argument("--scheduler", default="plateau", choices=["plateau", "cosine"],
+                   help="plateau: ReduceLROnPlateau; cosine: CosineAnnealingLR over --epochs")
     p.add_argument("--lr-patience", type=int, default=7, help="ReduceLROnPlateau patience (epochs)")
     p.add_argument("--lr-factor", type=float, default=0.5)
+    p.add_argument("--min-lr", type=float, default=1e-6, help="final learning rate for the cosine schedule")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--threads", type=int, default=None)
     return p.parse_args()
@@ -120,8 +123,12 @@ def main():
 
     loss_fn = nn.MSELoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, factor=args.lr_factor, patience=args.lr_patience)
+    if args.scheduler == "cosine":
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=args.epochs, eta_min=args.min_lr)
+    else:
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, factor=args.lr_factor, patience=args.lr_patience)
 
     history = {"train_loss": [], "val_loss": [], "lr": []}
     # best_val/best_state track the lowest val loss seen; ref_val is the last loss that beat
@@ -132,7 +139,10 @@ def main():
     for epoch in range(args.epochs):
         train_loss = run_epoch(model, train_loader, loss_fn, optimizer)
         val_loss = run_epoch(model, val_loader, loss_fn)
-        scheduler.step(val_loss)
+        if args.scheduler == "cosine":
+            scheduler.step()
+        else:
+            scheduler.step(val_loss)
         history["train_loss"].append(train_loss)
         history["val_loss"].append(val_loss)
         history["lr"].append(optimizer.param_groups[0]["lr"])
