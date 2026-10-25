@@ -1,0 +1,5 @@
+scheduler=cosine seed=44: done
+scheduler=cosine seed=43: done
+scheduler=cosine seed=42: done
+   scheduler seeds  test MSE mean       std       min    median       p95  epochs  time/s
+      cosine     3       8.00e-05   2.6e-05  5.97e-05  2.34e-05  2.46e-04    1000    1121

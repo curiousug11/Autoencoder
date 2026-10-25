@@ -1,0 +1,41 @@
+{
+  "n_total": 98725,
+  "n_kept": 44026,
+  "min_feature_height_ppm": 210.0,
+  "n_test": 6604,
+  "n_val": 6604,
+  "n_train": 30818,
+  "epochs_run": 1000,
+  "best_epoch": 994,
+  "train_time_s": 1119.9,
+  "best_val_mse": 5.9228148559402555e-05,
+  "test_mse": 7.131120630742042e-05,
+  "test_mse_median": 2.162103555747308e-05,
+  "test_mse_p95": 0.00021678947086911649,
+  "args": {
+    "data_dir": "/home/user/Autoencoder/data",
+    "out": "runs/ae_wide_cosine/scheduler_cosine/seed_43",
+    "min_feature_height_ppm": 210.0,
+    "hidden": [
+      256,
+      128,
+      64,
+      32,
+      16
+    ],
+    "latent": 8,
+    "activation": "gelu",
+    "epochs": 1000,
+    "patience": 50,
+    "min_delta": 0.001,
+    "batch_size": 256,
+    "lr": 0.001,
+    "weight_decay": 1e-05,
+    "scheduler": "cosine",
+    "lr_patience": 7,
+    "lr_factor": 0.5,
+    "min_lr": 1e-06,
+    "seed": 43,
+    "threads": 1
+  }
+}

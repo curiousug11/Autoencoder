@@ -126,3 +126,29 @@ python sweep.py --param activation --values relu leaky_relu elu selu gelu silu m
 - ReLU is clearly the worst.
 - The smooth activations (GELU, Tanh, SiLU, Mish, ELU) all reach about 2e-4 on their best seed and overlap within seed noise.
 - Within each of these smooth activations, the spread between seeds is mostly driven by when early stopping fires. Runs that stopped before about 450 epochs end near 4–6e-4, and runs that went past about 750 epochs reach about 2e-4. A longer `--patience` would probably narrow the gaps between seeds.
+
+## Wider model + cosine schedule (`runs/ae_wide_cosine/`)
+
+Settings:
+- **Architecture:** `52-256-128-64-32-16-8`, mirrored for the decoder (115k parameters)
+- **Activation:** GELU
+- **Learning rate:** cosine schedule from 1e-3 to 1e-6 over 1000 epochs
+- **Early stopping:** patience 50
+- **Seeds:** 3
+
+```
+python sweep.py --param scheduler --values cosine --seeds 42 43 44 --workers 3 --out runs/ae_wide_cosine \
+    -- --hidden 256 128 64 32 16 --latent 8 --patience 50
+```
+
+| seed | best epoch | val MSE | test MSE | median | p95 |
+|---|---|---|---|---|---|
+| 42 | 996 | 5.7e-5 | 6.0e-5 | 1.8e-5 | 1.5e-4 |
+| 43 | 994 | 5.9e-5 | 7.1e-5 | 2.2e-5 | 2.2e-4 |
+| 44 | 996 | 1.2e-4 | 1.1e-4 | 3.0e-5 | 3.7e-4 |
+| **mean** | | | **8.0e-5 ± 2.6e-5** | 2.3e-5 | 2.5e-4 |
+
+- The mean test MSE is about 3.4x lower than the previous GELU configuration (`128-64-32-16`, plateau schedule, patience 20), which had 2.73e-4 ± 1.1e-4.
+- The median is about 5x lower.
+- All seeds ran the full 1000 epochs.
+- A gap between train and val loss now appears (about 4e-5 vs 6e-5).
