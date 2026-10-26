@@ -12,10 +12,11 @@ Usage:
     python anomaly.py                    # train the 3 models (in parallel) and evaluate
     python anomaly.py --eval-only        # re-evaluate existing models
     python anomaly.py --train-datasets pos prt --init-seeds 43 44   # extra seeds for some codes
+    python anomaly.py -- --epochs 50     # extra train.py arguments after '--'
+    python anomaly.py --out runs/anomaly_noise/sigma20 --no-eval -- --noise-ppm 20   # denoising models
 
 When a code has several trained runs (different init seeds), evaluation uses the one with
 the lowest validation loss on that code's own spectra; no anomalous data is used to choose.
-    python anomaly.py -- --epochs 50     # extra train.py arguments after '--'
 """
 
 import argparse
@@ -52,6 +53,7 @@ def parse_args():
                    help="weight-init seeds to train for each code (default: --seed)")
     p.add_argument("--min-feature-height-ppm", type=float, default=210.0)
     p.add_argument("--eval-only", action="store_true")
+    p.add_argument("--no-eval", action="store_true", help="only train (e.g. denoising models, see chi2_score.py)")
     p.add_argument("train_args", nargs=argparse.REMAINDER,
                    help="extra arguments passed to train.py after '--'")
     return p.parse_args()
@@ -208,7 +210,8 @@ def main():
             codes = list(pool.map(lambda job: train_one(job, args, extra), jobs))
         if any(codes):
             sys.exit("training failed; see train.log in the run directories")
-    evaluate(args)
+    if not args.no_eval:
+        evaluate(args)
 
 
 if __name__ == "__main__":

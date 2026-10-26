@@ -1,8 +1,14 @@
-"""Train the spectrum autoencoder on the POS binned spectra.
+"""Train the spectrum autoencoder on the binned spectra.
 
 Usage:
     python train.py                       # defaults below
     python train.py --lr 5e-4 --out runs/lr5e-4
+    python train.py --noise-ppm 20        # denoising: noisy inputs, clean targets
+
+With --noise-ppm, white Gaussian noise of that many ppm is added to the raw spectra (a fresh
+draw every batch for training, one fixed draw for val/test). The input is the noisy spectrum
+z-normalised with its own mean and std; the target is the clean spectrum scaled by that same
+mean and std, so output * std + mean is the denoised spectrum in transit-depth units.
 """
 
 import argparse
@@ -15,6 +21,7 @@ import matplotlib
 import numpy as np
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
 
 from data import DATA_DIR, DATASETS, make_loader, prepare_splits
 from model import ACTIVATIONS, Autoencoder
@@ -49,17 +56,39 @@ def parse_args():
     p.add_argument("--seed", type=int, default=42, help="seed for weight init and batch order")
     p.add_argument("--split-seed", type=int, default=None,
                    help="seed for the train/val/test split (default: --seed)")
+    p.add_argument("--noise-ppm", type=float, default=0.0,
+                   help="train as a denoising AE with this white noise per bin (ppm); 0 = noiseless")
     p.add_argument("--threads", type=int, default=None)
     return p.parse_args()
 
 
-def run_epoch(model, loader, loss_fn, optimizer=None):
+def raw_spectra(split):
+    """Transit-depth spectra (float64 tensor) recovered from a z-normalised split."""
+    return torch.from_numpy(split.spectra.astype(np.float64) * split.std[:, None] + split.mean[:, None])
+
+
+def noisy_pairs(raw, sigma, generator=None):
+    """(input, target): noisy spectrum z-normalised by its own mean/std, clean spectrum scaled the same way."""
+    noisy = raw + sigma * torch.randn(raw.shape, generator=generator, dtype=raw.dtype)
+    m = noisy.mean(1, keepdim=True)
+    s = noisy.std(1, unbiased=False, keepdim=True)
+    return ((noisy - m) / s).float(), ((raw - m) / s).float()
+
+
+def run_epoch(model, loader, loss_fn, optimizer=None, noise=0.0):
+    """Batches are (x,) for plain reconstruction, (raw,) with noise > 0, or fixed (input, target) pairs."""
     training = optimizer is not None
     model.train(training)
     total, n = 0.0, 0
     with torch.set_grad_enabled(training):
-        for (x,) in loader:
-            loss = loss_fn(model(x), x)
+        for batch in loader:
+            if len(batch) == 2:
+                x, target = batch
+            elif noise:
+                x, target = noisy_pairs(batch[0], noise)
+            else:
+                x = target = batch[0]
+            loss = loss_fn(model(x), target)
             if training:
                 optimizer.zero_grad()
                 loss.backward()
@@ -94,7 +123,7 @@ def plot_reconstructions(wavelength, x, x_hat, per_spec_mse, path, n=8):
     wl_order = np.argsort(wavelength)
     fig, axes = plt.subplots(2, n // 2, figsize=(14, 6), sharex=True)
     for ax, i in zip(axes.flat, picks):
-        ax.plot(wavelength[wl_order], x[i, wl_order], "k.-", lw=1, ms=3, label="input")
+        ax.plot(wavelength[wl_order], x[i, wl_order], "k.-", lw=1, ms=3, label="target")
         ax.plot(wavelength[wl_order], x_hat[i, wl_order], "C3-", lw=1.2, label="recon")
         ax.set_title(f"MSE={per_spec_mse[i]:.2e}", fontsize=9)
     for ax in axes[-1]:
@@ -120,9 +149,17 @@ def main():
     print(json.dumps(data_info, indent=2))
     np.savez(out / "split_indices.npz", **{k: s.index for k, s in splits.items()})
 
-    train_loader = make_loader(splits["train"], args.batch_size, shuffle=True)
-    val_loader = make_loader(splits["val"], 4096, shuffle=False)
-    test_loader = make_loader(splits["test"], 4096, shuffle=False)
+    noise = args.noise_ppm * 1e-6
+    if noise:
+        gen = torch.Generator().manual_seed(args.seed)
+        fixed = {k: noisy_pairs(raw_spectra(splits[k]), noise, gen) for k in ("val", "test")}
+        train_loader = DataLoader(TensorDataset(raw_spectra(splits["train"])), args.batch_size, shuffle=True)
+        val_loader = DataLoader(TensorDataset(*fixed["val"]), 4096)
+        test_loader = DataLoader(TensorDataset(*fixed["test"]), 4096)
+    else:
+        train_loader = make_loader(splits["train"], args.batch_size, shuffle=True)
+        val_loader = make_loader(splits["val"], 4096, shuffle=False)
+        test_loader = make_loader(splits["test"], 4096, shuffle=False)
 
     model = Autoencoder(len(wavelength), tuple(args.hidden), args.latent, ACTIVATIONS[args.activation])
     print(model)
@@ -144,7 +181,7 @@ def main():
     ref_val, bad_epochs = float("inf"), 0
     t0 = time.time()
     for epoch in range(args.epochs):
-        train_loss = run_epoch(model, train_loader, loss_fn, optimizer)
+        train_loss = run_epoch(model, train_loader, loss_fn, optimizer, noise)
         val_loss = run_epoch(model, val_loader, loss_fn)
         if args.scheduler == "cosine":
             scheduler.step()
@@ -172,8 +209,11 @@ def main():
 
     model.load_state_dict(best_state)
     test_loss = run_epoch(model, test_loader, loss_fn)
-    x_test = splits["test"].spectra
-    x_hat = reconstruct(model, x_test)
+    if noise:
+        x_in, x_test = (t.numpy() for t in fixed["test"])
+    else:
+        x_in = x_test = splits["test"].spectra
+    x_hat = reconstruct(model, x_in)
     per_spec_mse = ((x_hat - x_test) ** 2).mean(axis=1)
 
     metrics = {
