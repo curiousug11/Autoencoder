@@ -1,0 +1,145 @@
+{
+  "dataset": "pos",
+  "cut_datasets": [
+    "pos",
+    "prt",
+    "taurex"
+  ],
+  "n_total": 98725,
+  "n_kept": 43885,
+  "min_feature_height_ppm": 210.0,
+  "n_test": 6583,
+  "n_val": 6583,
+  "n_train": 30719
+}
+Autoencoder(
+  (encoder): Sequential(
+    (0): Linear(in_features=52, out_features=256, bias=True)
+    (1): GELU(approximate='none')
+    (2): Linear(in_features=256, out_features=128, bias=True)
+    (3): GELU(approximate='none')
+    (4): Linear(in_features=128, out_features=64, bias=True)
+    (5): GELU(approximate='none')
+    (6): Linear(in_features=64, out_features=32, bias=True)
+    (7): GELU(approximate='none')
+    (8): Linear(in_features=32, out_features=16, bias=True)
+    (9): GELU(approximate='none')
+    (10): Linear(in_features=16, out_features=8, bias=True)
+  )
+  (decoder): Sequential(
+    (0): Linear(in_features=8, out_features=16, bias=True)
+    (1): GELU(approximate='none')
+    (2): Linear(in_features=16, out_features=32, bias=True)
+    (3): GELU(approximate='none')
+    (4): Linear(in_features=32, out_features=64, bias=True)
+    (5): GELU(approximate='none')
+    (6): Linear(in_features=64, out_features=128, bias=True)
+    (7): GELU(approximate='none')
+    (8): Linear(in_features=128, out_features=256, bias=True)
+    (9): GELU(approximate='none')
+    (10): Linear(in_features=256, out_features=52, bias=True)
+  )
+)
+parameters: 114972
+epoch    0  train 0.34027  val 0.14049  lr 1.0e-03  *
+epoch    1  train 0.10594  val 0.08593  lr 1.0e-03  *
+epoch    2  train 0.07059  val 0.06024  lr 1.0e-03  *
+epoch    3  train 0.05624  val 0.05312  lr 1.0e-03  *
+epoch    4  train 0.05053  val 0.04759  lr 1.0e-03  *
+epoch    5  train 0.04592  val 0.04474  lr 1.0e-03  *
+epoch    6  train 0.04301  val 0.04212  lr 1.0e-03  *
+epoch    7  train 0.04129  val 0.04164  lr 1.0e-03  *
+epoch    8  train 0.03997  val 0.03910  lr 1.0e-03  *
+epoch    9  train 0.03937  val 0.03797  lr 1.0e-03  *
+epoch   10  train 0.03858  val 0.03767  lr 1.0e-03  *
+epoch   11  train 0.03801  val 0.03649  lr 1.0e-03  *
+epoch   13  train 0.03656  val 0.03564  lr 1.0e-03  *
+epoch   14  train 0.03611  val 0.03521  lr 1.0e-03  *
+epoch   15  train 0.03554  val 0.03461  lr 1.0e-03  *
+epoch   16  train 0.03306  val 0.03162  lr 1.0e-03  *
+epoch   17  train 0.03120  val 0.03032  lr 1.0e-03  *
+epoch   18  train 0.03020  val 0.02903  lr 1.0e-03  *
+epoch   19  train 0.02863  val 0.02800  lr 1.0e-03  *
+epoch   20  train 0.02712  val 0.02651  lr 1.0e-03  *
+epoch   21  train 0.02590  val 0.02536  lr 1.0e-03  *
+epoch   22  train 0.02460  val 0.02349  lr 1.0e-03  *
+epoch   23  train 0.02369  val 0.02312  lr 1.0e-03  *
+epoch   24  train 0.02286  val 0.02275  lr 1.0e-03  *
+epoch   25  train 0.02220  val 0.02191  lr 1.0e-03  *
+epoch   26  train 0.02223  val 0.02140  lr 1.0e-03  *
+epoch   27  train 0.02164  val 0.02117  lr 1.0e-03  *
+epoch   28  train 0.02138  val 0.02087  lr 1.0e-03  *
+epoch   29  train 0.02107  val 0.02083  lr 1.0e-03  *
+epoch   30  train 0.02123  val 0.02106  lr 1.0e-03  
+epoch   31  train 0.02070  val 0.02059  lr 1.0e-03  *
+epoch   32  train 0.02066  val 0.02029  lr 1.0e-03  *
+epoch   34  train 0.02066  val 0.02025  lr 1.0e-03  *
+epoch   36  train 0.02027  val 0.02009  lr 1.0e-03  *
+epoch   37  train 0.02020  val 0.01982  lr 1.0e-03  *
+epoch   38  train 0.01996  val 0.01958  lr 1.0e-03  *
+epoch   40  train 0.02005  val 0.01957  lr 1.0e-03  
+epoch   42  train 0.01972  val 0.01945  lr 1.0e-03  *
+epoch   43  train 0.01951  val 0.01941  lr 1.0e-03  *
+epoch   44  train 0.01959  val 0.01900  lr 1.0e-03  *
+epoch   49  train 0.01912  val 0.01876  lr 9.9e-04  *
+epoch   50  train 0.01913  val 0.01885  lr 9.9e-04  
+epoch   51  train 0.01890  val 0.01864  lr 9.9e-04  *
+epoch   55  train 0.01872  val 0.01833  lr 9.9e-04  *
+epoch   56  train 0.01837  val 0.01804  lr 9.9e-04  *
+epoch   58  train 0.01808  val 0.01789  lr 9.9e-04  *
+epoch   60  train 0.01796  val 0.01804  lr 9.9e-04  
+epoch   62  train 0.01802  val 0.01784  lr 9.9e-04  *
+epoch   63  train 0.01795  val 0.01778  lr 9.9e-04  *
+epoch   64  train 0.01783  val 0.01760  lr 9.9e-04  *
+epoch   67  train 0.01761  val 0.01757  lr 9.9e-04  *
+epoch   69  train 0.01756  val 0.01750  lr 9.9e-04  *
+epoch   70  train 0.01760  val 0.01790  lr 9.9e-04  
+epoch   72  train 0.01735  val 0.01715  lr 9.9e-04  *
+epoch   78  train 0.01717  val 0.01707  lr 9.8e-04  *
+epoch   80  train 0.01752  val 0.01699  lr 9.8e-04  *
+epoch   84  train 0.01723  val 0.01692  lr 9.8e-04  *
+epoch   85  train 0.01690  val 0.01681  lr 9.8e-04  *
+epoch   90  train 0.01697  val 0.01698  lr 9.8e-04  
+epoch   93  train 0.01703  val 0.01652  lr 9.8e-04  *
+epoch  100  train 0.01698  val 0.01696  lr 9.8e-04  
+epoch  110  train 0.01656  val 0.01669  lr 9.7e-04  
+epoch  113  train 0.01665  val 0.01650  lr 9.7e-04  *
+epoch  120  train 0.01660  val 0.01691  lr 9.6e-04  
+epoch  130  train 0.01664  val 0.01659  lr 9.6e-04  
+epoch  134  train 0.01650  val 0.01640  lr 9.6e-04  *
+epoch  136  train 0.01667  val 0.01638  lr 9.5e-04  *
+epoch  140  train 0.01656  val 0.01648  lr 9.5e-04  
+epoch  141  train 0.01650  val 0.01636  lr 9.5e-04  *
+epoch  150  train 0.01656  val 0.01628  lr 9.4e-04  *
+epoch  160  train 0.01647  val 0.01639  lr 9.4e-04  
+epoch  170  train 0.01626  val 0.01649  lr 9.3e-04  
+epoch  171  train 0.01639  val 0.01623  lr 9.3e-04  *
+epoch  175  train 0.01626  val 0.01607  lr 9.3e-04  *
+epoch  180  train 0.01618  val 0.01625  lr 9.2e-04  
+epoch  190  train 0.01630  val 0.01655  lr 9.1e-04  
+epoch  200  train 0.01631  val 0.01637  lr 9.0e-04  
+epoch  210  train 0.01605  val 0.01615  lr 8.9e-04  
+epoch  220  train 0.01617  val 0.01627  lr 8.8e-04  
+early stopping at epoch 225 (best epoch 175)
+{
+  "dataset": "pos",
+  "cut_datasets": [
+    "pos",
+    "prt",
+    "taurex"
+  ],
+  "n_total": 98725,
+  "n_kept": 43885,
+  "min_feature_height_ppm": 210.0,
+  "n_test": 6583,
+  "n_val": 6583,
+  "n_train": 30719,
+  "epochs_run": 226,
+  "best_epoch": 175,
+  "train_time_s": 217.4,
+  "best_val_mse": 0.016070844540204136,
+  "test_mse": 0.015636752250775657,
+  "test_mse_median": 0.007509129587560892,
+  "test_mse_p95": 0.05691884458065033
+}
+saved to runs/anomaly_noise/sigma50/train_pos/

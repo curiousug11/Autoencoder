@@ -334,3 +334,55 @@ At the reduced-χ² > 1.51 threshold:
 - **Next steps:**
   - Train with noise added to the inputs and clean spectra as targets (a denoising autoencoder), so the reconstruction ignores the noise.
   - Set the threshold empirically from simulated noisy own-code spectra, not from the theoretical χ² distribution.
+
+### Denoising autoencoders (`train.py --noise-ppm`, `runs/anomaly_noise/`)
+
+One model was trained per code and per noise level (10, 20, 30, 50 ppm), giving 12 models.
+- **Inputs:** noisy spectra, z-normalised by their own mean and std. A fresh noise draw is used every batch.
+- **Targets:** the clean spectra, scaled by the same mean and std.
+- **Settings:** otherwise the same as the anomaly models (wide architecture, cosine schedule, patience 50, split seed 42).
+- **Stopping:** the noisy validation loss is flat, so 9 of the 12 runs stopped early, after 230–410 epochs.
+
+Launched by `runs/anomaly_noise/run.sh`. Evaluated with:
+
+```
+python chi2_score.py --sigmas 10 20 30 50 --out runs/anomaly_noise/chi2
+```
+
+The test spectra get noise at the model's training level, and they are scored with reduced χ² against the error bars. Two thresholds are compared:
+- **Theoretical:** reduced χ² > 1.51.
+- **Empirical:** the 99th percentile of reduced χ² on noisy own-code validation spectra, so the false-positive rate really is about 1%.
+
+Means over the 6 code pairs:
+
+| σ (ppm) | model | AUC | flagged at theoretical threshold: own / other | flagged at empirical 1% threshold: other |
+|---|---|---|---|---|
+| 10 | noiseless | **0.73** | 14% / 49% | **4.1%** |
+| | denoising | 0.68 | 22% / 49% | 2.5% |
+| | oracle | 0.95 | 1% / 81% | — |
+| 20 | noiseless | **0.67** | 9% / 32% | **4.1%** |
+| | denoising | 0.63 | 15% / 32% | 2.5% |
+| | oracle | 0.88 | 1% / 62% | — |
+| 30 | noiseless | **0.63** | 8% / 24% | **4.1%** |
+| | denoising | 0.60 | 12% / 25% | 2.1% |
+| | oracle | 0.82 | 1% / 49% | — |
+| 50 | noiseless | **0.60** | 7% / 18% | **4.2%** |
+| | denoising | 0.56 | 11% / 18% | 1.6% |
+| | oracle | 0.75 | 1% / 36% | — |
+
+How close each model's reconstruction is to the true clean spectrum, RMS in ppm, own-code test spectra (median / 99th percentile):
+
+| code | σ | noiseless AE | denoising AE |
+|---|---|---|---|
+| POS | 10 | 5.5 / 135 | 4.9 / 209 |
+| POS | 20 | 10.5 / 136 | 7.7 / 153 |
+| POS | 50 | 26.9 / 138 | 18.1 / 375 |
+| TauREx | 10 | 5.4 / 85 | 4.4 / 169 |
+| TauREx | 20 | 10.5 / 86 | 8.4 / 264 |
+| TauREx | 50 | 27.2 / 89 | 18.0 / 375 |
+
+- **Denoising training did not improve anomaly detection.** It is slightly worse than the noiseless models at every noise level.
+  - For typical spectra it does denoise better: the median reconstruction error is 20–35% lower.
+  - But its worst cases are much worse: the 99th-percentile error rises to 150–375 ppm, against 85–140 ppm. That tail sets the threshold and raises the false-positive rate. Stopping early probably contributes.
+- **At a properly calibrated 1% false-positive rate, both autoencoders flag only 2–4% of other-code spectra at 10–50 ppm.** The oracle flags 36–81%. The theoretical-threshold detection rates (18–49%) were inflated by 7–22% false positives.
+- **The limit is each autoencoder's worst-case reconstruction error, about 100–375 ppm for its hardest own-code spectra.** That is far larger than the typical difference between codes (about 10 ppm). The hardest spectra are the cool and low-gravity planets. The rate stays near 4% at every noise level because, for the hardest spectra, the model's own error is much larger than the noise.

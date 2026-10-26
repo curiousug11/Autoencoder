@@ -1,0 +1,234 @@
+{
+  "dataset": "prt",
+  "cut_datasets": [
+    "pos",
+    "prt",
+    "taurex"
+  ],
+  "n_total": 98725,
+  "n_kept": 43885,
+  "min_feature_height_ppm": 210.0,
+  "n_test": 6583,
+  "n_val": 6583,
+  "n_train": 30719
+}
+Autoencoder(
+  (encoder): Sequential(
+    (0): Linear(in_features=52, out_features=256, bias=True)
+    (1): GELU(approximate='none')
+    (2): Linear(in_features=256, out_features=128, bias=True)
+    (3): GELU(approximate='none')
+    (4): Linear(in_features=128, out_features=64, bias=True)
+    (5): GELU(approximate='none')
+    (6): Linear(in_features=64, out_features=32, bias=True)
+    (7): GELU(approximate='none')
+    (8): Linear(in_features=32, out_features=16, bias=True)
+    (9): GELU(approximate='none')
+    (10): Linear(in_features=16, out_features=8, bias=True)
+  )
+  (decoder): Sequential(
+    (0): Linear(in_features=8, out_features=16, bias=True)
+    (1): GELU(approximate='none')
+    (2): Linear(in_features=16, out_features=32, bias=True)
+    (3): GELU(approximate='none')
+    (4): Linear(in_features=32, out_features=64, bias=True)
+    (5): GELU(approximate='none')
+    (6): Linear(in_features=64, out_features=128, bias=True)
+    (7): GELU(approximate='none')
+    (8): Linear(in_features=128, out_features=256, bias=True)
+    (9): GELU(approximate='none')
+    (10): Linear(in_features=256, out_features=52, bias=True)
+  )
+)
+parameters: 114972
+epoch    0  train 0.36614  val 0.14748  lr 1.0e-03  *
+epoch    1  train 0.10791  val 0.08330  lr 1.0e-03  *
+epoch    2  train 0.07281  val 0.06316  lr 1.0e-03  *
+epoch    3  train 0.05053  val 0.04352  lr 1.0e-03  *
+epoch    4  train 0.03916  val 0.03666  lr 1.0e-03  *
+epoch    5  train 0.03432  val 0.03277  lr 1.0e-03  *
+epoch    6  train 0.03145  val 0.03063  lr 1.0e-03  *
+epoch    7  train 0.02914  val 0.02892  lr 1.0e-03  *
+epoch    8  train 0.02746  val 0.02617  lr 1.0e-03  *
+epoch    9  train 0.02558  val 0.02393  lr 1.0e-03  *
+epoch   10  train 0.02293  val 0.02146  lr 1.0e-03  *
+epoch   11  train 0.02101  val 0.01960  lr 1.0e-03  *
+epoch   12  train 0.01916  val 0.01831  lr 1.0e-03  *
+epoch   13  train 0.01832  val 0.01799  lr 1.0e-03  *
+epoch   14  train 0.01760  val 0.01722  lr 1.0e-03  *
+epoch   15  train 0.01732  val 0.01664  lr 1.0e-03  *
+epoch   16  train 0.01681  val 0.01652  lr 1.0e-03  *
+epoch   17  train 0.01638  val 0.01613  lr 1.0e-03  *
+epoch   18  train 0.01623  val 0.01585  lr 1.0e-03  *
+epoch   19  train 0.01592  val 0.01543  lr 1.0e-03  *
+epoch   20  train 0.01565  val 0.01621  lr 1.0e-03  
+epoch   21  train 0.01554  val 0.01510  lr 1.0e-03  *
+epoch   23  train 0.01516  val 0.01480  lr 1.0e-03  *
+epoch   25  train 0.01492  val 0.01462  lr 1.0e-03  *
+epoch   26  train 0.01498  val 0.01448  lr 1.0e-03  *
+epoch   27  train 0.01473  val 0.01435  lr 1.0e-03  *
+epoch   30  train 0.01435  val 0.01436  lr 1.0e-03  
+epoch   31  train 0.01426  val 0.01418  lr 1.0e-03  *
+epoch   32  train 0.01421  val 0.01408  lr 1.0e-03  *
+epoch   35  train 0.01381  val 0.01357  lr 1.0e-03  *
+epoch   36  train 0.01363  val 0.01352  lr 1.0e-03  *
+epoch   37  train 0.01338  val 0.01296  lr 1.0e-03  *
+epoch   39  train 0.01266  val 0.01256  lr 1.0e-03  *
+epoch   40  train 0.01239  val 0.01231  lr 1.0e-03  *
+epoch   42  train 0.01181  val 0.01157  lr 1.0e-03  *
+epoch   43  train 0.01156  val 0.01145  lr 1.0e-03  *
+epoch   44  train 0.01153  val 0.01122  lr 1.0e-03  *
+epoch   48  train 0.01092  val 0.01092  lr 9.9e-04  *
+epoch   49  train 0.01078  val 0.01059  lr 9.9e-04  *
+epoch   50  train 0.01069  val 0.01079  lr 9.9e-04  
+epoch   52  train 0.01041  val 0.01023  lr 9.9e-04  *
+epoch   55  train 0.01013  val 0.00990  lr 9.9e-04  *
+epoch   58  train 0.00975  val 0.00988  lr 9.9e-04  *
+epoch   60  train 0.00974  val 0.00991  lr 9.9e-04  
+epoch   61  train 0.00958  val 0.00945  lr 9.9e-04  *
+epoch   63  train 0.00965  val 0.00942  lr 9.9e-04  *
+epoch   64  train 0.00956  val 0.00926  lr 9.9e-04  *
+epoch   67  train 0.00934  val 0.00917  lr 9.9e-04  *
+epoch   69  train 0.00929  val 0.00908  lr 9.9e-04  *
+epoch   70  train 0.00919  val 0.00926  lr 9.9e-04  
+epoch   73  train 0.00913  val 0.00905  lr 9.9e-04  *
+epoch   75  train 0.00915  val 0.00898  lr 9.9e-04  *
+epoch   78  train 0.00906  val 0.00870  lr 9.8e-04  *
+epoch   80  train 0.00905  val 0.00908  lr 9.8e-04  
+epoch   87  train 0.00878  val 0.00865  lr 9.8e-04  *
+epoch   90  train 0.00870  val 0.00876  lr 9.8e-04  
+epoch   93  train 0.00875  val 0.00863  lr 9.8e-04  *
+epoch   96  train 0.00873  val 0.00852  lr 9.8e-04  *
+epoch  100  train 0.00866  val 0.00888  lr 9.8e-04  
+epoch  107  train 0.00860  val 0.00848  lr 9.7e-04  *
+epoch  110  train 0.00856  val 0.00851  lr 9.7e-04  
+epoch  111  train 0.00855  val 0.00841  lr 9.7e-04  *
+epoch  114  train 0.00849  val 0.00831  lr 9.7e-04  *
+epoch  120  train 0.00846  val 0.00846  lr 9.6e-04  
+epoch  127  train 0.00833  val 0.00823  lr 9.6e-04  *
+epoch  130  train 0.00841  val 0.00828  lr 9.6e-04  
+epoch  140  train 0.00835  val 0.00824  lr 9.5e-04  
+epoch  141  train 0.00838  val 0.00819  lr 9.5e-04  *
+epoch  150  train 0.00839  val 0.00841  lr 9.4e-04  
+epoch  151  train 0.00829  val 0.00817  lr 9.4e-04  *
+epoch  156  train 0.00824  val 0.00816  lr 9.4e-04  *
+epoch  158  train 0.00825  val 0.00812  lr 9.4e-04  *
+epoch  160  train 0.00822  val 0.00829  lr 9.4e-04  
+epoch  170  train 0.00821  val 0.00823  lr 9.3e-04  
+epoch  180  train 0.00817  val 0.00824  lr 9.2e-04  
+epoch  183  train 0.00820  val 0.00804  lr 9.2e-04  *
+epoch  189  train 0.00814  val 0.00799  lr 9.1e-04  *
+epoch  190  train 0.00812  val 0.00815  lr 9.1e-04  
+epoch  200  train 0.00809  val 0.00831  lr 9.0e-04  
+epoch  210  train 0.00805  val 0.00807  lr 8.9e-04  
+epoch  220  train 0.00809  val 0.00812  lr 8.8e-04  
+epoch  222  train 0.00803  val 0.00797  lr 8.8e-04  *
+epoch  230  train 0.00802  val 0.00801  lr 8.7e-04  
+epoch  240  train 0.00800  val 0.00829  lr 8.6e-04  
+epoch  250  train 0.00808  val 0.00795  lr 8.5e-04  *
+epoch  253  train 0.00790  val 0.00790  lr 8.5e-04  *
+epoch  260  train 0.00791  val 0.00796  lr 8.4e-04  
+epoch  270  train 0.00792  val 0.00798  lr 8.3e-04  
+epoch  280  train 0.00793  val 0.00802  lr 8.2e-04  
+epoch  282  train 0.00788  val 0.00786  lr 8.2e-04  *
+epoch  290  train 0.00789  val 0.00788  lr 8.1e-04  
+epoch  297  train 0.00792  val 0.00785  lr 8.0e-04  *
+epoch  300  train 0.00780  val 0.00792  lr 7.9e-04  
+epoch  310  train 0.00780  val 0.00787  lr 7.8e-04  
+epoch  320  train 0.00787  val 0.00790  lr 7.7e-04  
+epoch  330  train 0.00785  val 0.00783  lr 7.5e-04  *
+epoch  340  train 0.00782  val 0.00797  lr 7.4e-04  
+epoch  341  train 0.00776  val 0.00782  lr 7.4e-04  *
+epoch  346  train 0.00777  val 0.00778  lr 7.3e-04  *
+epoch  350  train 0.00784  val 0.00818  lr 7.3e-04  
+epoch  360  train 0.00778  val 0.00797  lr 7.1e-04  
+epoch  370  train 0.00770  val 0.00784  lr 7.0e-04  
+epoch  379  train 0.00765  val 0.00773  lr 6.8e-04  *
+epoch  380  train 0.00777  val 0.00811  lr 6.8e-04  
+epoch  390  train 0.00776  val 0.00784  lr 6.7e-04  
+epoch  400  train 0.00773  val 0.00800  lr 6.5e-04  
+epoch  410  train 0.00764  val 0.00772  lr 6.4e-04  *
+epoch  420  train 0.00763  val 0.00781  lr 6.2e-04  
+epoch  423  train 0.00765  val 0.00769  lr 6.2e-04  *
+epoch  430  train 0.00768  val 0.00778  lr 6.1e-04  
+epoch  440  train 0.00771  val 0.00780  lr 5.9e-04  
+epoch  445  train 0.00757  val 0.00766  lr 5.8e-04  *
+epoch  450  train 0.00760  val 0.00780  lr 5.8e-04  
+epoch  460  train 0.00763  val 0.00772  lr 5.6e-04  
+epoch  470  train 0.00768  val 0.00773  lr 5.5e-04  
+epoch  480  train 0.00764  val 0.00773  lr 5.3e-04  
+epoch  489  train 0.00758  val 0.00763  lr 5.2e-04  *
+epoch  490  train 0.00762  val 0.00774  lr 5.1e-04  
+epoch  500  train 0.00752  val 0.00768  lr 5.0e-04  
+epoch  510  train 0.00762  val 0.00782  lr 4.8e-04  
+epoch  511  train 0.00755  val 0.00760  lr 4.8e-04  *
+epoch  520  train 0.00758  val 0.00767  lr 4.7e-04  
+epoch  530  train 0.00754  val 0.00766  lr 4.5e-04  
+epoch  540  train 0.00755  val 0.00767  lr 4.4e-04  
+epoch  547  train 0.00740  val 0.00759  lr 4.3e-04  *
+epoch  550  train 0.00752  val 0.00765  lr 4.2e-04  
+epoch  560  train 0.00753  val 0.00770  lr 4.1e-04  
+epoch  565  train 0.00752  val 0.00757  lr 4.0e-04  *
+epoch  570  train 0.00751  val 0.00761  lr 3.9e-04  
+epoch  580  train 0.00757  val 0.00758  lr 3.7e-04  
+epoch  590  train 0.00748  val 0.00765  lr 3.6e-04  
+epoch  600  train 0.00743  val 0.00757  lr 3.4e-04  
+epoch  607  train 0.00746  val 0.00756  lr 3.3e-04  *
+epoch  610  train 0.00742  val 0.00756  lr 3.3e-04  
+epoch  620  train 0.00748  val 0.00762  lr 3.2e-04  
+epoch  630  train 0.00745  val 0.00760  lr 3.0e-04  
+epoch  640  train 0.00743  val 0.00753  lr 2.9e-04  *
+epoch  650  train 0.00745  val 0.00761  lr 2.7e-04  
+epoch  660  train 0.00739  val 0.00753  lr 2.6e-04  
+epoch  663  train 0.00737  val 0.00751  lr 2.5e-04  *
+epoch  666  train 0.00744  val 0.00750  lr 2.5e-04  *
+epoch  670  train 0.00745  val 0.00757  lr 2.4e-04  
+epoch  680  train 0.00743  val 0.00755  lr 2.3e-04  
+epoch  690  train 0.00735  val 0.00750  lr 2.2e-04  
+epoch  692  train 0.00743  val 0.00748  lr 2.2e-04  *
+epoch  700  train 0.00731  val 0.00752  lr 2.1e-04  
+epoch  710  train 0.00741  val 0.00753  lr 1.9e-04  
+epoch  720  train 0.00734  val 0.00750  lr 1.8e-04  
+epoch  730  train 0.00736  val 0.00753  lr 1.7e-04  
+epoch  740  train 0.00731  val 0.00745  lr 1.6e-04  *
+epoch  750  train 0.00733  val 0.00754  lr 1.5e-04  
+epoch  760  train 0.00734  val 0.00748  lr 1.4e-04  
+epoch  767  train 0.00730  val 0.00744  lr 1.3e-04  *
+epoch  770  train 0.00731  val 0.00746  lr 1.2e-04  
+epoch  780  train 0.00729  val 0.00743  lr 1.1e-04  
+epoch  790  train 0.00731  val 0.00743  lr 1.0e-04  
+epoch  800  train 0.00731  val 0.00744  lr 9.5e-05  
+epoch  804  train 0.00725  val 0.00742  lr 9.2e-05  *
+epoch  810  train 0.00739  val 0.00743  lr 8.6e-05  
+epoch  816  train 0.00722  val 0.00741  lr 8.1e-05  *
+epoch  820  train 0.00734  val 0.00744  lr 7.8e-05  
+epoch  830  train 0.00727  val 0.00741  lr 7.0e-05  
+epoch  834  train 0.00730  val 0.00739  lr 6.7e-05  *
+epoch  840  train 0.00730  val 0.00742  lr 6.2e-05  
+epoch  850  train 0.00725  val 0.00741  lr 5.5e-05  
+epoch  860  train 0.00729  val 0.00740  lr 4.8e-05  
+epoch  870  train 0.00726  val 0.00739  lr 4.1e-05  
+epoch  880  train 0.00729  val 0.00739  lr 3.6e-05  
+early stopping at epoch 884 (best epoch 869)
+{
+  "dataset": "prt",
+  "cut_datasets": [
+    "pos",
+    "prt",
+    "taurex"
+  ],
+  "n_total": 98725,
+  "n_kept": 43885,
+  "min_feature_height_ppm": 210.0,
+  "n_test": 6583,
+  "n_val": 6583,
+  "n_train": 30719,
+  "epochs_run": 885,
+  "best_epoch": 869,
+  "train_time_s": 825.7,
+  "best_val_mse": 0.007384851332482267,
+  "test_mse": 0.007218040047236354,
+  "test_mse_median": 0.0029528355225920677,
+  "test_mse_p95": 0.02769065648317337
+}
+saved to runs/anomaly_noise/sigma30/train_prt/

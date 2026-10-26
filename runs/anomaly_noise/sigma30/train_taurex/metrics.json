@@ -1,0 +1,55 @@
+{
+  "dataset": "taurex",
+  "cut_datasets": [
+    "pos",
+    "prt",
+    "taurex"
+  ],
+  "n_total": 98725,
+  "n_kept": 43885,
+  "min_feature_height_ppm": 210.0,
+  "n_test": 6583,
+  "n_val": 6583,
+  "n_train": 30719,
+  "epochs_run": 313,
+  "best_epoch": 297,
+  "train_time_s": 293.6,
+  "best_val_mse": 0.007844383706815896,
+  "test_mse": 0.007740786389228323,
+  "test_mse_median": 0.0033340041991323233,
+  "test_mse_p95": 0.029103606939315796,
+  "args": {
+    "data_dir": "/home/user/Autoencoder/data",
+    "out": "runs/anomaly_noise/sigma30/train_taurex",
+    "dataset": "taurex",
+    "cut_datasets": [
+      "pos",
+      "prt",
+      "taurex"
+    ],
+    "min_feature_height_ppm": 210.0,
+    "hidden": [
+      256,
+      128,
+      64,
+      32,
+      16
+    ],
+    "latent": 8,
+    "activation": "gelu",
+    "epochs": 1000,
+    "patience": 50,
+    "min_delta": 0.001,
+    "batch_size": 256,
+    "lr": 0.001,
+    "weight_decay": 1e-05,
+    "scheduler": "cosine",
+    "lr_patience": 7,
+    "lr_factor": 0.5,
+    "min_lr": 1e-06,
+    "seed": 42,
+    "split_seed": 42,
+    "noise_ppm": 30.0,
+    "threads": 1
+  }
+}
