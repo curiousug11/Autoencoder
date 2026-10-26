@@ -429,3 +429,46 @@ The pairwise AUC is computed on test spectra of codes a and b with the score p_b
 - **The noiseless forest overfits slightly** (train accuracy 1.00), but test accuracy is still 0.97.
 - **petitRADTRANS is the hardest code to identify** at every noise level, and POS the easiest.
 - **The most informative bins** are about 1.27 µm, 1.55 µm, 2.9 µm, 2.35 µm and 6.3 µm (see `rf_importance.png`).
+
+### Accuracy by planet type (`rf_by_planet.py`, `runs/rf_classifier/by_planet/`)
+
+This uses the test-set probabilities saved by `rf_classifier.py`. A planet's accuracy is the fraction of its three spectra (one per code) that are attributed to the right code. The table compares the lowest and highest of 8 quantile bins:
+
+| quantity | σ = 0 | σ = 10 | σ = 20 | σ = 30 | σ = 50 ppm |
+|---|---|---|---|---|---|
+| code difference RMS (ppm) | 0.95 → 0.94 | **0.50 → 0.92** | **0.40 → 0.92** | **0.38 → 0.89** | **0.35 → 0.85** |
+| feature height (ppm) | 0.96 → 0.93 | **0.58 → 0.89** | **0.44 → 0.89** | **0.41 → 0.85** | **0.37 → 0.81** |
+| log g | 0.91 → 0.98 | 0.85 → 0.69 | 0.81 → 0.58 | 0.77 → 0.52 | 0.72 → 0.45 |
+| Mp | 0.91 → 0.98 | 0.82 → 0.73 | 0.76 → 0.61 | 0.72 → 0.55 | 0.67 → 0.48 |
+| T | 0.95 → 0.98 | 0.76 → 0.86 | 0.63 → 0.78 | 0.57 → 0.71 | 0.50 → 0.63 |
+| chem1 | 0.94 → 0.99 | 0.73 → 0.87 | 0.65 → 0.77 | 0.57 → 0.69 | 0.51 → 0.61 |
+| chem2 | 0.98 → 0.96 | 0.81 → 0.65 | 0.73 → 0.57 | 0.66 → 0.50 | 0.59 → 0.45 |
+| chem5 | 0.97 → 0.97 | 0.80 → 0.74 | 0.71 → 0.63 | 0.65 → 0.53 | 0.57 → 0.49 |
+| Rs | 0.96 → 0.97 | 0.84 → 0.74 | 0.75 → 0.63 | 0.70 → 0.57 | 0.60 → 0.51 |
+| Rp | 0.96 → 0.96 | 0.75 → 0.82 | 0.62 → 0.73 | 0.57 → 0.67 | 0.51 → 0.59 |
+| chem3, chem4 | flat | ≤ 0.05 change | ≤ 0.05 change | ≤ 0.06 change | ≤ 0.06 change |
+
+Accuracy for planets whose codes differ by at least X ppm RMS:
+
+| X | share of planets | σ = 0 | 10 | 20 | 30 | 50 ppm |
+|---|---|---|---|---|---|---|
+| 10 | 51% | 0.97 | 0.90 | 0.83 | 0.77 | 0.69 |
+| 30 | 24% | 0.95 | 0.92 | 0.90 | 0.87 | 0.81 |
+| 50 | 16% | 0.95 | 0.92 | 0.91 | 0.89 | 0.85 |
+| 100 | 9% | 0.93 | 0.91 | 0.91 | 0.88 | 0.85 |
+
+- **Noiseless:** accuracy is 0.91–0.99 for every planet type. Only the lowest-mass, lowest-gravity planets dip slightly, to 0.91.
+- **With noise, signal size dominates.**
+  - Planets whose codes differ by about 30 ppm or more (about a quarter of the sample) are still classified 81–90% correctly at 30–50 ppm noise.
+  - Planets whose codes differ by under about 5 ppm fall to near chance.
+  - Feature height tracks the same thing, because larger features give larger absolute differences between codes.
+- **The planet properties that help under noise are the ones that give large features:**
+  - low gravity and low Mp: 0.72 vs 0.45 at 50 ppm;
+  - hot planets: T above about 2200 K;
+  - large Rp;
+  - small host stars (Rs);
+  - high chem1.
+- **Planets that are harder to classify under noise:**
+  - planets around 1500 K;
+  - high chem2 or chem5 (the abundances anti-correlated with T).
+- **This is the opposite of the autoencoder.** Low-gravity planets were the autoencoder's hardest to reconstruct, but they are the easiest to classify once there is noise. Their spectra are large and complex. Big features make the code differences stand out above the noise, but complex shapes are harder for an 8-dimensional bottleneck to reproduce.
