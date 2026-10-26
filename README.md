@@ -617,3 +617,54 @@ The 16–84% scatter of predicted − true roughly doubles for T, chem1, chem2 a
   - `residual_spread.png`
   - `code_bias.png`
   - `bias_vs_true.png`
+
+### Noiseless-trained retrieval vs test noise: 0, 10, 20, 30, 50 ppm (`runs/retrieval_noise/`)
+
+The same saved models are tested at each noise level (`runs/retrieval_test{10,20,30,50}ppm/`), and the results are summarised with:
+
+```
+for s in 20 30 50; do python ml_retrieval.py --test-noise-ppm $s --models-dir runs/retrieval_models \
+    --train-fracs --out runs/retrieval_test${s}ppm; done
+python compare_retrieval.py runs/retrieval runs/retrieval_test{10,20,30,50}ppm --out runs/retrieval_noise
+```
+
+Mean R², self / cross (cross = mean over the 6 cross pairs):
+
+| parameter | 0 ppm | 10 ppm | 20 ppm | 30 ppm | 50 ppm |
+|---|---|---|---|---|---|
+| T | 0.997 / 0.963 | 0.962 / 0.931 | 0.894 / 0.867 | 0.819 / 0.794 | 0.678 / 0.659 |
+| chem4 | 0.994 / 0.983 | 0.964 / 0.954 | 0.916 / 0.907 | 0.866 / 0.859 | 0.769 / 0.764 |
+| chem2 | 0.966 / 0.951 | 0.900 / 0.891 | 0.831 / 0.823 | 0.772 / 0.765 | 0.680 / 0.674 |
+| chem1 | 0.959 / 0.953 | 0.888 / 0.884 | 0.797 / 0.792 | 0.707 / 0.705 | 0.541 / 0.538 |
+| Mp | 0.901 / 0.866 | 0.856 / 0.834 | 0.792 / 0.776 | 0.727 / 0.716 | 0.608 / 0.600 |
+| chem5 | 0.901 / 0.873 | 0.790 / 0.774 | 0.641 / 0.631 | 0.507 / 0.502 | 0.296 / 0.291 |
+| chem3 | 0.851 / 0.627 | 0.596 / 0.438 | 0.287 / 0.163 | 0.001 / −0.094 | −0.459 / −0.533 |
+| Rs | 0.761 / 0.661 | 0.578 / 0.525 | 0.370 / 0.342 | 0.204 / 0.190 | −0.010 / −0.015 |
+| Rp | 0.609 / 0.437 | 0.349 / 0.250 | 0.035 / −0.028 | −0.222 / −0.265 | −0.572 / −0.598 |
+
+Median bias ± 16–84% half-width:
+
+| trained → tested, parameter | 0 ppm | 10 ppm | 20 ppm | 30 ppm | 50 ppm |
+|---|---|---|---|---|---|
+| self, T (K; mean of 3 codes) | 0 ± 27 | −5 ± 86 | −13 ± 149 | −21 ± 208 | −41 ± 305 |
+| POS → petitRADTRANS, T (K) | +39 ± 86 | +38 ± 128 | +31 ± 178 | +24 ± 235 | +9 ± 323 |
+| petitRADTRANS → POS, T (K) | −45 ± 143 | −63 ± 179 | −82 ± 224 | −100 ± 265 | −130 ± 333 |
+| TauREx → POS, T (K) | −28 ± 58 | −34 ± 116 | −46 ± 179 | −55 ± 232 | −80 ± 316 |
+| self, chem3 (dex; mean) | −0.03 | −0.04 | −0.07 | −0.12 | −0.22 |
+| POS → petitRADTRANS, chem3 (dex) | +0.29 ± 0.93 | +0.26 ± 1.10 | +0.23 ± 1.32 | +0.19 ± 1.53 | +0.09 ± 1.86 |
+| TauREx → POS, chem3 (dex) | −0.37 ± 0.78 | −0.39 ± 1.04 | −0.43 ± 1.30 | −0.49 ± 1.52 | −0.60 ± 1.83 |
+| POS → petitRADTRANS, Rp (R_J) | −0.078 ± 0.25 | −0.070 ± 0.30 | −0.056 ± 0.35 | −0.058 ± 0.38 | −0.046 ± 0.43 |
+| petitRADTRANS → POS, Rp (R_J) | +0.056 ± 0.24 | +0.056 ± 0.29 | +0.057 ± 0.34 | +0.058 ± 0.38 | +0.065 ± 0.43 |
+
+- **Precision falls steeply with noise, and noise-free training makes it worse.**
+  - At 30–50 ppm, R² is negative for Rp, chem3 and Rs, so the models do worse than predicting the mean value. The models have never seen noise in training, so their predictions on noisy spectra are unreliable.
+  - T (0.68), chem4 (0.77), chem2 (0.68) and Mp (0.61) keep some skill at 50 ppm.
+- **Noise also adds its own bias.** Self-retrieval T drifts to about −40 K at 50 ppm, and chem3 to about −0.2 dex. In cross retrieval, this noise-induced shift adds to the code bias:
+  - Where the two point the same way, the bias grows: petitRADTRANS → POS T goes from −45 to −130 K, and TauREx → POS chem3 from −0.37 to −0.60 dex.
+  - Where they point opposite ways, it partly cancels: POS → petitRADTRANS T goes from +39 to +9 K.
+- **The code biases themselves stay roughly constant in absolute size, while the scatter grows.** The median ratio |bias| / half-width for cross retrieval falls from about 0.15–0.35 noiseless to about 0.07–0.17 at 50 ppm (`vs_noise.png`, bottom row). So for single planets, the code systematics become a minor part of the error budget beyond about 20–30 ppm. They remain a coherent shift for population studies.
+- **The self vs cross R² gap closes with noise for most parameters** (T, Mp and the robust abundances are within 0.02–0.03 by 20 ppm). It persists longest for chem3 (0.85/0.63 at 0 ppm, 0.29/0.16 at 20 ppm) and for Rp.
+- **Plots:**
+  - `vs_noise.png`: R², |bias|, half-width and |bias|/half-width vs noise, self vs cross.
+  - `comparison.png`: every train→test pair at all 5 noise levels.
+  - `comparison_table.txt`: the full numbers.

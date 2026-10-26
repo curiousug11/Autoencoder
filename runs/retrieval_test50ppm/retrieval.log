@@ -1,0 +1,64 @@
+train POS            Rs     best round 2981  R² POS 0.010  petitRADTRANS -0.016  TauREx -0.081  [4s]
+train POS            Rp     best round 2998  R² POS -0.506  petitRADTRANS -0.547  TauREx -0.694  [3s]
+train POS            Mp     best round 2990  R² POS 0.606  petitRADTRANS 0.599  TauREx 0.578  [2s]
+train POS            T      best round 2999  R² POS 0.678  petitRADTRANS 0.698  TauREx 0.701  [2s]
+train POS            chem1  best round 2126  R² POS 0.512  petitRADTRANS 0.518  TauREx 0.540  [2s]
+train POS            chem2  best round  748  R² POS 0.684  petitRADTRANS 0.688  TauREx 0.678  [1s]
+train POS            chem3  best round 1773  R² POS -0.518  petitRADTRANS -0.450  TauREx -0.382  [1s]
+train POS            chem4  best round 2767  R² POS 0.757  petitRADTRANS 0.761  TauREx 0.773  [2s]
+train POS            chem5  best round  701  R² POS 0.315  petitRADTRANS 0.309  TauREx 0.257  [0s]
+train petitRADTRANS  Rs     best round 2948  R² POS 0.030  petitRADTRANS 0.025  TauREx -0.022  [2s]
+train petitRADTRANS  Rp     best round 2991  R² POS -0.553  petitRADTRANS -0.537  TauREx -0.659  [2s]
+train petitRADTRANS  Mp     best round 2987  R² POS 0.619  petitRADTRANS 0.632  TauREx 0.613  [2s]
+train petitRADTRANS  T      best round 2990  R² POS 0.603  petitRADTRANS 0.689  TauREx 0.638  [2s]
+train petitRADTRANS  chem1  best round 2995  R² POS 0.515  petitRADTRANS 0.523  TauREx 0.546  [2s]
+train petitRADTRANS  chem2  best round 1172  R² POS 0.665  petitRADTRANS 0.687  TauREx 0.676  [1s]
+train petitRADTRANS  chem3  best round 1864  R² POS -0.739  petitRADTRANS -0.488  TauREx -0.458  [1s]
+train petitRADTRANS  chem4  best round 2776  R² POS 0.741  petitRADTRANS 0.753  TauREx 0.766  [2s]
+train petitRADTRANS  chem5  best round  934  R² POS 0.280  petitRADTRANS 0.276  TauREx 0.207  [1s]
+train TauREx         Rs     best round 2998  R² POS -0.004  petitRADTRANS 0.005  TauREx -0.063  [2s]
+train TauREx         Rp     best round 2998  R² POS -0.566  petitRADTRANS -0.567  TauREx -0.674  [2s]
+train TauREx         Mp     best round 2999  R² POS 0.591  petitRADTRANS 0.600  TauREx 0.586  [2s]
+train TauREx         T      best round 2988  R² POS 0.638  petitRADTRANS 0.675  TauREx 0.666  [2s]
+train TauREx         chem1  best round 1426  R² POS 0.549  petitRADTRANS 0.563  TauREx 0.587  [1s]
+train TauREx         chem2  best round  766  R² POS 0.662  petitRADTRANS 0.675  TauREx 0.669  [1s]
+train TauREx         chem3  best round 1473  R² POS -0.688  petitRADTRANS -0.482  TauREx -0.371  [1s]
+train TauREx         chem4  best round 2880  R² POS 0.772  petitRADTRANS 0.774  TauREx 0.796  [2s]
+train TauREx         chem5  best round  485  R² POS 0.340  petitRADTRANS 0.351  TauREx 0.297  [0s]
+
+trained on POS: R² / median bias (predicted − true) on test planets
+  param                         POS             petitRADTRANS                    TauREx
+  Rs            0.010     +0.00237       -0.016      -0.0283       -0.081      -0.0192 
+  Rp           -0.506    +0.000324       -0.547      -0.0455       -0.694      -0.0375 
+  Mp            0.606      -0.0874        0.599       -0.125        0.578       -0.163 
+  T             0.678        -37.9        0.698        +8.54        0.701        -7.56 
+  chem1         0.512       -0.098        0.518      -0.0738        0.540      -0.0625 
+  chem2         0.684     +0.00283        0.688    -0.000262        0.678     +0.00783 
+  chem3        -0.518       -0.191       -0.450      +0.0879       -0.382      +0.0366 
+  chem4         0.757      +0.0537        0.761      +0.0551        0.773      +0.0431 
+  chem5         0.315      -0.0637        0.309      -0.0609        0.257     -0.00154 
+
+trained on petitRADTRANS: R² / median bias (predicted − true) on test planets
+  param                         POS             petitRADTRANS                    TauREx
+  Rs            0.030      +0.0347        0.025     +0.00476       -0.022      +0.0199 
+  Rp           -0.553      +0.0648       -0.537      +0.0298       -0.659      +0.0272 
+  Mp            0.619      -0.0454        0.632      -0.0654        0.613      -0.0998 
+  T             0.603         -130        0.689          -42        0.638        -85.3 
+  chem1         0.515       -0.159        0.523      -0.0989        0.546      -0.0943 
+  chem2         0.665     +0.00272        0.687     -0.00175        0.676     +0.00663 
+  chem3        -0.739       -0.512       -0.488        -0.23       -0.458       -0.205 
+  chem4         0.741      +0.0711        0.753      +0.0479        0.766      +0.0425 
+  chem5         0.280      -0.0632        0.276      -0.0652        0.207     +0.00116 
+
+trained on TauREx: R² / median bias (predicted − true) on test planets
+  param                         POS             petitRADTRANS                    TauREx
+  Rs           -0.004      +0.0406        0.005      +0.0129       -0.063      +0.0122 
+  Rp           -0.566       +0.033       -0.567     -0.00105       -0.674     -0.00798 
+  Mp            0.591      -0.0305        0.600      -0.0534        0.586       -0.082 
+  T             0.638        -79.5        0.675        -27.6        0.666        -41.8 
+  chem1         0.549       -0.134        0.563      -0.0958        0.587      -0.0673 
+  chem2         0.662      +0.0192        0.675      +0.0186        0.669      +0.0254 
+  chem3        -0.688       -0.603       -0.482       -0.207       -0.371       -0.228 
+  chem4         0.772      +0.0841        0.774      +0.0834        0.796       +0.051 
+  chem5         0.340      -0.0761        0.351      -0.0776        0.297      -0.0295 
+saved to runs/retrieval_test50ppm/
