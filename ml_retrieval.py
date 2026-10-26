@@ -10,7 +10,10 @@ by the differences between the codes (the code systematics).
 Data: planets passing the 210 ppm cut in all codes, the shared train/val/test split (seed 42)
 of the anomaly experiment. Features: the z-normalised spectrum (52 bins) plus log10 of the
 spectrum's mean depth and std, so the absolute depth (which carries Rp/Rs) is not thrown away.
-Optional white noise (--noise-ppm) is added to the raw spectra before computing the features.
+Optional white noise is added to the raw spectra before computing the features: --noise-ppm for
+the train/val spectra, --test-noise-ppm for the test spectra (default: same as --noise-ppm), so a
+model trained on noiseless spectra can be tested on noisy ones. With --models-dir, trained models
+are saved there and reused on later runs (loss and learning curves are then skipped).
 
 Outputs (in --out):
   loss_curves_<code>.png      train/val RMSE vs boosting round for each parameter
@@ -24,6 +27,8 @@ Outputs (in --out):
 Usage:
     python ml_retrieval.py
     python ml_retrieval.py --noise-ppm 20 --out runs/retrieval_20ppm
+    python ml_retrieval.py --test-noise-ppm 10 --models-dir runs/retrieval_models --train-fracs \
+        --out runs/retrieval_test10ppm        # noiseless-trained models, 10 ppm test spectra
 """
 
 import argparse
@@ -53,12 +58,16 @@ def parse_args():
     p.add_argument("--datasets", nargs="+", default=list(DATASETS), choices=DATASETS)
     p.add_argument("--train-codes", nargs="+", default=None, choices=DATASETS, help="default: all")
     p.add_argument("--seed", type=int, default=42)
-    p.add_argument("--noise-ppm", type=float, default=0.0)
+    p.add_argument("--noise-ppm", type=float, default=0.0, help="white noise on train/val spectra (ppm)")
+    p.add_argument("--test-noise-ppm", type=float, default=None,
+                   help="white noise on test spectra (ppm); default: --noise-ppm")
+    p.add_argument("--models-dir", default=None,
+                   help="save trained models here, and load them instead of training if already present")
     p.add_argument("--n-estimators", type=int, default=3000)
     p.add_argument("--learning-rate", type=float, default=0.1)
     p.add_argument("--max-depth", type=int, default=8)
     p.add_argument("--early-stopping", type=int, default=100)
-    p.add_argument("--train-fracs", type=float, nargs="+", default=[0.05, 0.1, 0.25, 0.5],
+    p.add_argument("--train-fracs", type=float, nargs="*", default=[0.05, 0.1, 0.25, 0.5],
                    help="extra training-set fractions for the learning curves (1.0 is always run)")
     p.add_argument("--n-jobs", type=int, default=4)
     p.add_argument("--replot", action="store_true",
@@ -106,7 +115,12 @@ def main():
     if args.replot:
         return replot(args, out)
     rng = np.random.default_rng(args.seed)
+    noise_rng = np.random.default_rng(args.seed + 1)
+    test_noise = args.noise_ppm if args.test_noise_ppm is None else args.test_noise_ppm
     train_codes = args.train_codes or args.datasets
+    models_dir = Path(args.models_dir) if args.models_dir else None
+    if models_dir:
+        models_dir.mkdir(parents=True, exist_ok=True)
 
     splits = prepare_splits(args.data_dir, seed=args.seed, dataset=args.datasets[0], cut_datasets=args.datasets)[0]
     y = {part: splits[part].params for part in ("train", "val", "test")}
@@ -115,8 +129,9 @@ def main():
         raw = load_raw(args.data_dir, d)[0]
         for part in ("train", "val", "test"):
             r = raw[splits[part].index]
-            if args.noise_ppm:
-                r = r + rng.normal(0, args.noise_ppm * 1e-6, r.shape)
+            sigma = test_noise if part == "test" else args.noise_ppm
+            if sigma:
+                r = r + noise_rng.normal(0, sigma * 1e-6, r.shape)
             X[(d, part)] = features(r)
     prior_range = np.ptp(np.concatenate([y["train"], y["val"], y["test"]]), 0)
     n_tr = len(y["train"])
@@ -126,16 +141,24 @@ def main():
     for a in train_codes:
         for j, name in enumerate(PARAMS):
             t0 = time.time()
-            model = make_model(args)
-            model.fit(X[(a, "train")], y["train"][:, j],
-                      eval_set=[(X[(a, "train")], y["train"][:, j]), (X[(a, "val")], y["val"][:, j])], verbose=False)
-            ev = model.evals_result()
-            curves[(a, name)] = (ev["validation_0"]["rmse"], ev["validation_1"]["rmse"])
+            path = models_dir / f"{a}_{name}.json" if models_dir else None
+            if path and path.exists():
+                model = xgb.XGBRegressor()
+                model.load_model(path)
+            else:
+                model = make_model(args)
+                model.fit(X[(a, "train")], y["train"][:, j],
+                          eval_set=[(X[(a, "train")], y["train"][:, j]), (X[(a, "val")], y["val"][:, j])],
+                          verbose=False)
+                ev = model.evals_result()
+                curves[(a, name)] = (ev["validation_0"]["rmse"], ev["validation_1"]["rmse"])
+                if path:
+                    model.save_model(path)
             best_iter[(a, name)] = int(model.best_iteration)
             for b in args.datasets:
                 preds[(a, b, name)] = model.predict(X[(b, "test")])
             learning[(a, name, 1.0)] = {b: r2(y["test"][:, j], preds[(a, b, name)]) for b in args.datasets}
-            for f, idx in subsets.items():
+            for f, idx in (subsets.items() if (a, name) in curves else ()):
                 m = make_model(args)
                 m.fit(X[(a, "train")][idx], y["train"][idx, j], eval_set=[(X[(a, "val")], y["val"][:, j])],
                       verbose=False)
@@ -151,7 +174,8 @@ def main():
     print_table(args, train_codes, results)
 
     for a in train_codes:
-        plot_loss(a, curves, best_iter, out / f"loss_curves_{a}.png")
+        if all((a, n) in curves for n in PARAMS):
+            plot_loss(a, curves, best_iter, out / f"loss_curves_{a}.png")
         plot_true_vs_pred(args, a, y["test"], preds, out / f"true_vs_pred_{a}.png")
     plot_learning(args, train_codes, learning, n_tr, out / "learning_curves.png")
     plot_spread(args, train_codes, y["test"], preds, out / "residual_spread.png")
@@ -161,7 +185,9 @@ def main():
 
 
 def summarise(args, train_codes, y, preds, prior_range, best_iter, learning, n_tr):
-    res = {"noise_ppm": args.noise_ppm, "n_test_planets": int(len(y)), "n_train_planets": int(n_tr),
+    res = {"noise_ppm": args.noise_ppm,
+           "test_noise_ppm": args.noise_ppm if args.test_noise_ppm is None else args.test_noise_ppm,
+           "n_test_planets": int(len(y)), "n_train_planets": int(n_tr),
            "params": PARAMS, "prior_range": dict(zip(PARAMS, prior_range.tolist())), "train_codes": {}}
     for a in train_codes:
         ra = {}
