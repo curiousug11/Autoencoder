@@ -386,3 +386,46 @@ How close each model's reconstruction is to the true clean spectrum, RMS in ppm,
   - But its worst cases are much worse: the 99th-percentile error rises to 150–375 ppm, against 85–140 ppm. That tail sets the threshold and raises the false-positive rate. Stopping early probably contributes.
 - **At a properly calibrated 1% false-positive rate, both autoencoders flag only 2–4% of other-code spectra at 10–50 ppm.** The oracle flags 36–81%. The theoretical-threshold detection rates (18–49%) were inflated by 7–22% false positives.
 - **The limit is each autoencoder's worst-case reconstruction error, about 100–375 ppm for its hardest own-code spectra.** That is far larger than the typical difference between codes (about 10 ppm). The hardest spectra are the cool and low-gravity planets. The rate stays near 4% at every noise level because, for the hardest spectra, the model's own error is much larger than the noise.
+
+## Random-forest code classifier (`rf_classifier.py`, `runs/rf_classifier/`)
+
+A 3-class random forest predicts which code produced a spectrum.
+
+**Data:** the same planets and split as the anomaly experiment.
+- 210 ppm cut applied in all codes; split seed 42.
+- Every planet gives one spectrum per code, so there are 92,157 training spectra and 19,749 test spectra.
+- Test planets are never seen in training, in any code.
+- **Noise:** white noise of σ ppm is added to the raw spectra, for both training and test, and each spectrum is then z-normalised.
+
+**Settings:**
+- 300 trees, `min_samples_leaf=2`, `max_features=sqrt`.
+- One noisy copy of each training spectrum.
+- Trained and tested at the same σ.
+
+```
+python rf_classifier.py                       # σ = 0, 10, 20, 30, 50 ppm
+python rf_classifier.py --train-copies 3      # 3 noise draws per training spectrum
+```
+
+| σ (ppm) | accuracy (chance 0.33) | POS recall | petitRADTRANS recall | TauREx recall | macro one-vs-rest AUC | mean pairwise AUC |
+|---|---|---|---|---|---|---|
+| 0 | **0.968** | 0.98 | 0.95 | 0.98 | 0.997 | 0.999 |
+| 10 | **0.783** | 0.82 | 0.73 | 0.79 | 0.925 | 0.945 |
+| 20 | **0.684** | 0.74 | 0.63 | 0.69 | 0.861 | 0.886 |
+| 30 | **0.617** | 0.67 | 0.56 | 0.61 | 0.811 | 0.838 |
+| 50 | **0.549** | 0.61 | 0.50 | 0.54 | 0.749 | 0.775 |
+
+Training on 3 noise draws per spectrum adds only about 1 point of accuracy: 0.692 at 20 ppm and 0.561 at 50 ppm.
+
+The pairwise AUC is computed on test spectra of codes a and b with the score p_b / (p_a + p_b), so it can be compared directly with the anomaly-detection AUCs (mean over the 6 pairs):
+
+| σ (ppm) | 10 | 20 | 30 | 50 |
+|---|---|---|---|---|
+| AE χ² (noiseless models) | 0.73 | 0.67 | 0.63 | 0.60 |
+| "oracle" χ² against the own code's true spectrum | 0.95 | 0.88 | 0.82 | 0.75 |
+| **random forest** | **0.945** | **0.886** | **0.838** | **0.775** |
+
+- **The classifier separates the codes far better than the autoencoders at every noise level.** It matches or slightly beats the "oracle". The oracle was only a one-class goodness-of-fit test: is this spectrum consistent with code a? The classifier instead learns the specific ways the codes differ, so it is not the ceiling for a test that knows all three codes.
+- **The noiseless forest overfits slightly** (train accuracy 1.00), but test accuracy is still 0.97.
+- **petitRADTRANS is the hardest code to identify** at every noise level, and POS the easiest.
+- **The most informative bins** are about 1.27 µm, 1.55 µm, 2.9 µm, 2.35 µm and 6.3 µm (see `rf_importance.png`).
