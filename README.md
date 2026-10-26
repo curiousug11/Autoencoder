@@ -266,3 +266,32 @@ Other findings:
 ```
 python poor_recon.py --top-frac 0.05
 ```
+
+### Robustness to observational noise (`noise_robustness.py`, `runs/anomaly/noise/`)
+
+The trained anomaly models (no retraining) score the same test planets after white Gaussian noise of σ ppm is added to every bin of the raw spectra. The noisy spectra are then z-normalised as usual. Each noise level uses 2 noise realisations.
+
+| σ (ppm) | 0 | 2 | 5 | 10 | 20 | 30 | 50 | 100 |
+|---|---|---|---|---|---|---|---|---|
+| AUC, range over the 6 code pairs | 0.96–0.99 | 0.90–0.92 | 0.73–0.76 | 0.61–0.64 | 0.55–0.57 | 0.52–0.54 | 0.51–0.53 | 0.50–0.52 |
+
+How different the codes are for the same planet: the RMS difference between their mean-subtracted noiseless spectra.
+
+| code pair | median | 10th–90th percentile |
+|---|---|---|
+| POS vs petitRADTRANS | 11 ppm | 3–93 ppm |
+| POS vs TauREx | 10 ppm | 3–76 ppm |
+| petitRADTRANS vs TauREx | 9 ppm | 2–77 ppm |
+
+TauREx model vs POS spectra, restricted to planets whose code difference is large:
+
+| planets with RMS difference ≥ | share of planets | AUC at 10 ppm | AUC at 20 ppm | AUC at 50 ppm |
+|---|---|---|---|---|
+| 0 ppm (all) | 100% | 0.63 | 0.56 | 0.52 |
+| 30 ppm | 22% | 0.95 | 0.84 | 0.66 |
+| 50 ppm | 14% | 0.98 | 0.93 | 0.75 |
+| 100 ppm | 8% | 0.98 | 0.97 | 0.89 |
+
+- **For a typical planet the codes differ by only about 10 ppm RMS.** Noise of that size or larger hides the difference.
+- **The noiseless models are not robust to noise.** AUC falls to about 0.75 at 5 ppm and to chance at 30–50 ppm.
+- **Detection is still possible for planets where the codes differ strongly.** For the roughly 8–14% of planets with code differences above 50–100 ppm, AUC stays at 0.75–0.97 for noise up to 20–50 ppm.
