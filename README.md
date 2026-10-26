@@ -295,3 +295,42 @@ TauREx model vs POS spectra, restricted to planets whose code difference is larg
 - **For a typical planet the codes differ by only about 10 ppm RMS.** Noise of that size or larger hides the difference.
 - **The noiseless models are not robust to noise.** AUC falls to about 0.75 at 5 ppm and to chance at 30–50 ppm.
 - **Detection is still possible for planets where the codes differ strongly.** For the roughly 8–14% of planets with code differences above 50–100 ppm, AUC stays at 0.75–0.97 for noise up to 20–50 ppm.
+
+### Scoring against known error bars (`chi2_score.py`, `runs/anomaly/chi2/`)
+
+For a noisy spectrum y with per-bin errors σ:
+1. z-normalise it.
+2. Reconstruct it with the code's autoencoder.
+3. Map the reconstruction back to transit depth, `ŷ = AE(z)·s + m`, where m and s are the spectrum's mean and std.
+4. Score it with the reduced χ², `Σ((y − ŷ)/σ)² / 52`.
+
+Details:
+- The flag threshold is the 99% point of a χ² with 52 degrees of freedom: reduced χ² > 1.51, a nominal 1% false-positive rate.
+- The models are the noiseless-trained anomaly models; they are not retrained.
+- Noise is white Gaussian, the same σ in every bin, with 2 realisations per level.
+- The **oracle** row scores each spectrum against the true noiseless spectrum of the training code for the same planet. It is the best any single-spectrum test could do if the planet's parameters were known.
+
+Mean AUC over the 6 code pairs:
+
+| σ (ppm) | 2 | 5 | 10 | 20 | 30 | 50 | 100 |
+|---|---|---|---|---|---|---|---|
+| z-norm MSE (old score) | **0.91** | 0.75 | 0.63 | 0.56 | 0.53 | 0.52 | 0.51 |
+| AE χ² vs error bars | 0.83 | **0.79** | **0.74** | **0.67** | **0.63** | **0.60** | **0.56** |
+| oracle χ² (ceiling) | 1.00 | 0.98 | 0.95 | 0.88 | 0.82 | 0.75 | 0.66 |
+
+At the reduced-χ² > 1.51 threshold:
+
+| σ (ppm) | 2 | 5 | 10 | 20 | 30 | 50 | 100 |
+|---|---|---|---|---|---|---|---|
+| own-code spectra flagged (AE; nominal 1%) | 39–47% | 19–25% | 12–16% | 8–10% | 6–8% | 6–7% | 8–9% |
+| other-code spectra flagged (AE) | 92–96% | 68–74% | 48–51% | 29–34% | 22–27% | 16–20% | 14–17% |
+| other-code spectra flagged (oracle; own-code ~1%) | 98–100% | 81–100% | 61–94% | 42–74% | 32–60% | 23–45% | 14–27% |
+
+- **The χ² score beats z-norm MSE at every noise level from 5 ppm up.** It roughly doubles the margin above chance at 10–50 ppm: AUC 0.74 vs 0.63 at 10 ppm, and 0.60 vs 0.52 at 50 ppm. z-norm MSE is better only at 2 ppm, where the noise is negligible.
+- **The score is not yet calibrated.** A typical own-code spectrum has reduced χ² ≈ 1, as it should. But the own-code distribution has a long tail, so 6–47% are flagged instead of 1%.
+  - At low σ, the tail is the autoencoder's own reconstruction error, which is large compared with tiny error bars.
+  - At high σ, the noisy input is unlike anything the model was trained on, so the reconstruction partly follows the noise.
+- **The autoencoder is the bottleneck, not the data.** The oracle reaches AUC 0.88 at 20 ppm and 0.75 at 50 ppm, against 0.67 and 0.60 for the autoencoder. The hardest pair is petitRADTRANS vs TauREx: oracle AUC 0.78 at 20 ppm.
+- **Next steps:**
+  - Train with noise added to the inputs and clean spectra as targets (a denoising autoencoder), so the reconstruction ignores the noise.
+  - Set the threshold empirically from simulated noisy own-code spectra, not from the theoretical χ² distribution.
