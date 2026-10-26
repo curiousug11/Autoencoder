@@ -568,3 +568,52 @@ Median bias (predicted − true) caused by switching code (self-retrieval biases
   - `bias_vs_true.png`
   - `learning_curves.png`
   - `loss_curves_<code>.png`
+
+### Noiseless-trained retrieval tested on 10 ppm spectra (`runs/retrieval_test10ppm/`)
+
+The same 27 noiseless-trained XGBoost models are applied to the test spectra with 10 ppm white noise added per bin. The models were retrained with the same settings and seed, and they reproduce the noiseless results exactly. They are saved in `runs/retrieval_models/`, which is git-ignored.
+
+```
+python ml_retrieval.py --test-noise-ppm 10 --models-dir runs/retrieval_models --train-fracs \
+    --out runs/retrieval_test10ppm
+python compare_retrieval.py runs/retrieval runs/retrieval_test10ppm --labels "noiseless test" "10 ppm test"
+```
+
+R² for noiseless → 10 ppm test spectra:
+
+| parameter | self retrieval | cross retrieval (range over the 6 cross pairs) |
+|---|---|---|
+| T | 0.997 → 0.96–0.97 | 0.92–0.99 → 0.89–0.96 |
+| chem4 | 0.994 → 0.96–0.97 | 0.98–0.99 → 0.95–0.96 |
+| chem1 | 0.96 → 0.89 | 0.95–0.96 → 0.88–0.89 |
+| chem2 | 0.96–0.97 → 0.90–0.91 | 0.94–0.96 → 0.87–0.90 |
+| Mp | 0.90 → 0.85–0.86 | 0.84–0.88 → 0.81–0.85 |
+| chem5 | 0.90 → 0.79 | 0.83–0.89 → 0.72–0.80 |
+| chem3 | 0.85–0.86 → 0.57–0.64 | 0.54–0.71 → 0.39–0.52 |
+| Rs | 0.76–0.77 → 0.56–0.59 | 0.55–0.72 → 0.44–0.57 |
+| Rp | 0.60–0.62 → 0.33–0.37 | 0.24–0.54 → 0.09–0.34 |
+
+Code biases (median predicted − true) are essentially unchanged by the noise:
+
+| trained → tested | T (K) | chem3 (dex) | Rp (R_J) |
+|---|---|---|---|
+| POS → petitRADTRANS | +39 → +38 | +0.29 → +0.26 | −0.078 → −0.070 |
+| POS → TauREx | +39 → +31 | +0.22 → +0.21 | −0.044 → −0.044 |
+| petitRADTRANS → POS | −45 → −63 | −0.29 → −0.29 | +0.056 → +0.056 |
+| TauREx → POS | −28 → −34 | −0.37 → −0.39 | +0.039 → +0.042 |
+
+The 16–84% scatter of predicted − true roughly doubles for T, chem1, chem2 and chem4. For example, T self retrieval goes from about 27 K to 83–89 K.
+
+- **Noise adds scatter, not bias.** All R² values drop. The code-induced median biases stay almost exactly where they were, e.g. T +39 K, chem3 ±0.3 dex and Rp −0.07 R_J. So the code systematics are an additive bias that 10 ppm noise does not wash out.
+- **The bias relative to the scatter shrinks but does not vanish.**
+  - T bias for POS → petitRADTRANS is about 0.3× the 16–84% half-width (38 vs 128 K).
+  - chem3 bias is about 0.25× (0.26 vs 1.1 dex).
+  - For a population of planets, these biases would still be clearly visible.
+- **The self-retrieval advantage remains for chem3, Rp and T involving POS.** chem3 self R² is 0.57–0.64 against 0.39–0.52 for cross. For the robust parameters (chem1, chem2, chem4, Mp), self and cross are within noise of each other.
+- **These models never saw noise in training, so the noisy-test R² values are a lower bound.** Training with noise (`--noise-ppm 10`) should recover part of the lost precision.
+- **Plots:**
+  - `comparison.png`: R², bias and spread, noiseless vs 10 ppm, for all train→test combinations.
+  - `true_vs_pred_<code>.png`
+  - `residual_spread.png`
+  - `code_bias.png`
+  - `bias_vs_true.png`

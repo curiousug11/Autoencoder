@@ -177,7 +177,8 @@ def main():
         if all((a, n) in curves for n in PARAMS):
             plot_loss(a, curves, best_iter, out / f"loss_curves_{a}.png")
         plot_true_vs_pred(args, a, y["test"], preds, out / f"true_vs_pred_{a}.png")
-    plot_learning(args, train_codes, learning, n_tr, out / "learning_curves.png")
+    if len({f for (_, _, f) in learning}) > 1:
+        plot_learning(args, train_codes, learning, n_tr, out / "learning_curves.png")
     plot_spread(args, train_codes, y["test"], preds, out / "residual_spread.png")
     plot_bias_matrix(args, train_codes, results, out / "code_bias.png")
     plot_bias_vs_true(args, train_codes, y["test"], preds, out / "bias_vs_true.png")
