@@ -7,7 +7,11 @@ parameter distributions with the rest, and checks whether the same planets are h
 
 Usage:
     python poor_recon.py
-    python poor_recon.py --top-frac 0.1 --param-names Rp Mp X T H2O CH4 CO CO2 NH3
+    python poor_recon.py --top-frac 0.1 --param-names Rs Rp Mp T H2O CH4 CO CO2 NH3
+
+Besides the 9 parameters (Rs, Rp, Mp, T, then 5 log abundances) it also checks derived
+quantities: log10 surface gravity Mp/Rp^2 (Jupiter units), log10 T*Rp/Mp (proportional to
+scale height over planet radius, H/Rp, at fixed mean molecular weight) and the feature height.
 """
 
 import argparse
@@ -32,7 +36,8 @@ def parse_args():
     p.add_argument("--datasets", nargs="+", default=list(DATASETS), choices=DATASETS)
     p.add_argument("--seed", type=int, default=42, help="split seed used by anomaly.py")
     p.add_argument("--top-frac", type=float, default=0.05)
-    p.add_argument("--param-names", nargs=9, default=[f"p{i}" for i in range(9)])
+    p.add_argument("--param-names", nargs=9,
+                   default=["Rs", "Rp", "Mp", "T", "chem1", "chem2", "chem3", "chem4", "chem5"])
     return p.parse_args()
 
 
@@ -50,6 +55,15 @@ def auc(neg, pos):
     """P(value for a random poorly reconstructed planet > value for a random other planet)."""
     r = rank(np.concatenate([neg, pos])) + 1
     return float((r[len(neg):].sum() - len(pos) * (len(pos) + 1) / 2) / (len(neg) * len(pos)))
+
+
+DERIVED = ["log_g", "log_H_over_Rp", "feature_height_ppm"]
+
+
+def features(params, fh):
+    """Parameters plus derived columns (DERIVED). Columns 1-3 of params are Rp, Mp, T."""
+    rp, mp, t = params[:, 1], params[:, 2], params[:, 3]
+    return np.column_stack([params, np.log10(mp / rp**2), np.log10(t * rp / mp), fh])
 
 
 def main():
@@ -72,7 +86,7 @@ def main():
 
     # Feature height (ppm) of each code's own raw spectrum, as an extra explanatory variable.
     fh = {d: feature_height(load_raw(args.data_dir, d)[0][index]) * 1e6 for d in args.datasets}
-    columns = names + ["feature_height_ppm"]
+    columns = names + DERIVED
 
     n_top = int(round(args.top_frac * len(index)))
     poor = {d: np.argsort(errors[d])[::-1][:n_top] for d in args.datasets}
@@ -80,7 +94,7 @@ def main():
     for d in args.datasets:
         is_poor = np.zeros(len(index), bool)
         is_poor[poor[d]] = True
-        feats = np.column_stack([params, fh[d]])
+        feats = features(params, fh[d])
         res = {}
         for j, c in enumerate(columns):
             v = feats[:, j]
@@ -122,6 +136,7 @@ def main():
 
     plot_hists(args, columns, params, fh, poor, out / "poor_recon_params.png")
     plot_scatter(args, results, columns, params, fh, errors, out / "poor_recon_scatter.png")
+    plot_t_logg(args, params, fh, poor, out / "poor_recon_T_logg.png")
     print(f"\nsaved to {out}/")
 
 
@@ -129,7 +144,7 @@ def plot_hists(args, columns, params, fh, poor, path):
     n = len(columns)
     fig, axes = plt.subplots(len(args.datasets), n, figsize=(2.3 * n, 2.4 * len(args.datasets)), squeeze=False)
     for i, d in enumerate(args.datasets):
-        feats = np.column_stack([params, fh[d]])
+        feats = features(params, fh[d])
         for j, c in enumerate(columns):
             ax = axes[i, j]
             v = feats[:, j]
@@ -158,7 +173,7 @@ def plot_scatter(args, results, columns, params, fh, errors, path):
     for i, d in enumerate(args.datasets):
         res = results["codes"][d]["params"]
         top = sorted(columns, key=lambda c: -abs(res[c]["auc_poor_vs_rest"] - 0.5))[:2]
-        feats = dict(zip(columns, np.column_stack([params, fh[d]]).T))
+        feats = dict(zip(columns, features(params, fh[d]).T))
         for ax, c in zip(axes[i], top):
             v = feats[c]
             ax.scatter(v, np.log10(errors[d]), s=2, alpha=0.25, color=f"C{i}", rasterized=True)
@@ -168,6 +183,25 @@ def plot_scatter(args, results, columns, params, fh, errors, path):
             ax.set(xlabel=c, ylabel="log10 MSE", title=f"{LABELS[d]}: AUC={res[c]['auc_poor_vs_rest']:.2f}")
     fig.tight_layout()
     fig.savefig(path, dpi=130)
+    plt.close(fig)
+
+
+def plot_t_logg(args, params, fh, poor, path):
+    """Fraction of planets that are poorly reconstructed, binned in T and log g."""
+    feats = features(params, fh[args.datasets[0]])
+    t, logg = feats[:, 3], feats[:, 9]
+    tb = np.linspace(t.min(), t.max(), 13)
+    gb = np.linspace(np.percentile(logg, 0.5), np.percentile(logg, 99.5), 13)
+    total, _, _ = np.histogram2d(t, logg, bins=[tb, gb])
+    fig, axes = plt.subplots(1, len(args.datasets), figsize=(5 * len(args.datasets), 4.2), squeeze=False)
+    for ax, d in zip(axes[0], args.datasets):
+        bad, _, _ = np.histogram2d(t[poor[d]], logg[poor[d]], bins=[tb, gb])
+        frac = np.where(total >= 20, bad / np.maximum(total, 1), np.nan)
+        im = ax.pcolormesh(tb, gb, frac.T, cmap="magma_r", vmin=0, vmax=0.4)
+        ax.set(xlabel="T", title=LABELS[d])
+    axes[0, 0].set_ylabel("log10 g  [log10 Mp/Rp^2, Jupiter units]")
+    fig.colorbar(im, ax=axes[0].tolist(), label=f"fraction in worst {args.top_frac:.0%}")
+    fig.savefig(path, dpi=130, bbox_inches="tight")
     plt.close(fig)
 
 
