@@ -32,6 +32,7 @@ import time
 from pathlib import Path
 
 import matplotlib
+import matplotlib.ticker
 import numpy as np
 import xgboost as xgb
 
@@ -60,6 +61,8 @@ def parse_args():
     p.add_argument("--train-fracs", type=float, nargs="+", default=[0.05, 0.1, 0.25, 0.5],
                    help="extra training-set fractions for the learning curves (1.0 is always run)")
     p.add_argument("--n-jobs", type=int, default=4)
+    p.add_argument("--replot", action="store_true",
+                   help="redo the plots (except loss curves) from saved predictions/results, no training")
     return p.parse_args()
 
 
@@ -79,10 +82,29 @@ def make_model(args, n_estimators=None):
                             early_stopping_rounds=args.early_stopping)
 
 
+def replot(args, out):
+    results = json.loads((out / "retrieval_results.json").read_text())
+    saved = np.load(out / "predictions.npz")
+    train_codes = list(results["train_codes"])
+    y = saved["y_true"]
+    preds = {(a, b, n): saved[f"{a}_on_{b}_{n}"] for a in train_codes for b in args.datasets for n in PARAMS}
+    learning = {(a, n, float(f)): v for a in train_codes for n in PARAMS
+                for f, v in results["train_codes"][a][n]["learning_curve"].items()}
+    for a in train_codes:
+        plot_true_vs_pred(args, a, y, preds, out / f"true_vs_pred_{a}.png")
+    plot_learning(args, train_codes, learning, results["n_train_planets"], out / "learning_curves.png")
+    plot_spread(args, train_codes, y, preds, out / "residual_spread.png")
+    plot_bias_matrix(args, train_codes, results, out / "code_bias.png")
+    plot_bias_vs_true(args, train_codes, y, preds, out / "bias_vs_true.png")
+    print(f"replotted in {out}/")
+
+
 def main():
     args = parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    if args.replot:
+        return replot(args, out)
     rng = np.random.default_rng(args.seed)
     train_codes = args.train_codes or args.datasets
 
@@ -203,6 +225,8 @@ def plot_learning(args, train_codes, learning, n_tr, path):
                 ax.plot(np.array(fracs) * n_tr, vals, "o-" if b == a else "s--", ms=3, color=f"C{k}",
                         lw=2 if b == a else 1, label=f"on {LABELS[b]}" + (" (self)" if b == a else ""))
             ax.set_xscale("log")
+            ax.set_xticks([1e3, 1e4], ["1k", "10k"])
+            ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
             ax.tick_params(labelsize=7)
             if i == 0:
                 ax.set_title(name)
@@ -263,9 +287,10 @@ def plot_spread(args, train_codes, y, preds, path):
         ax.set_xticks([t for t, _ in ticks], [f"train {lbl}" for _, lbl in ticks], fontsize=8)
         ax.set(title=name, ylabel=f"predicted − true ({UNITS[j]})")
     handles = [plt.Rectangle((0, 0), 1, 1, color=f"C{k}", alpha=0.6) for k in range(len(args.datasets))]
-    fig.legend(handles, [f"tested on {LABELS[b]}" for b in args.datasets], loc="upper center", ncol=3)
-    fig.suptitle("Spread of predicted − true (box 25–75%, whiskers 5–95%)", y=0.995)
-    fig.tight_layout(rect=(0, 0, 1, 0.95))
+    fig.suptitle("Spread of predicted − true (box 25–75%, whiskers 5–95%)")
+    fig.legend(handles, [f"tested on {LABELS[b]}" for b in args.datasets], loc="upper center", ncol=3,
+               bbox_to_anchor=(0.5, 0.955))
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
     fig.savefig(path, dpi=130)
     plt.close(fig)
 

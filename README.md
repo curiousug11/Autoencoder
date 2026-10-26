@@ -503,3 +503,68 @@ Plots:
 - `pca_components_{absolute,relative}.png`: component shapes, with approximate band positions.
 - `pca_drivers_{absolute,relative}.png`: parameter correlations.
 - `offsets.png`: offset over T and log g.
+
+## ML retrieval with XGBoost: self vs cross retrieval (`ml_retrieval.py`, `runs/retrieval/`)
+
+For each training code, one XGBoost regressor per parameter is trained on that code's spectra (noiseless). It is then applied to the same held-out test planets in every code:
+- **Self retrieval:** the training code's own spectra.
+- **Cross retrieval:** the other codes' spectra.
+
+The planets are identical, so the change from self to cross predictions is caused only by the code differences.
+
+**Data:** the 210 ppm cut in all codes and the shared split (30,719 / 6,583 / 6,583).
+
+**Features:** the z-normalised spectrum (52 bins) plus log10 mean depth and log10 std (these keep Rp/Rs).
+
+**XGBoost settings:** learning rate 0.1, max depth 8, subsample 0.8, colsample 0.8, up to 3000 rounds, early stopping after 100 rounds on val RMSE.
+
+**Learning curves:** retrained on 5, 10, 25 and 50% of the training planets.
+
+```
+python ml_retrieval.py                       # trains 27 models + learning curves (~40 min)
+python ml_retrieval.py --noise-ppm 20 --out runs/retrieval_20ppm
+python ml_retrieval.py --replot              # redo plots from saved predictions
+```
+
+Test R² (diagonal = self retrieval):
+
+| trained on → tested on | Rs | Rp | Mp | T | chem1 | chem2 | chem3 | chem4 | chem5 |
+|---|---|---|---|---|---|---|---|---|---|
+| POS → POS | 0.77 | 0.62 | 0.90 | 0.997 | 0.96 | 0.97 | 0.85 | 0.994 | 0.90 |
+| POS → petitRADTRANS | 0.63 | 0.37 | 0.86 | 0.970 | 0.95 | 0.95 | **0.54** | 0.987 | 0.89 |
+| POS → TauREx | 0.55 | **0.24** | 0.84 | 0.989 | 0.96 | 0.95 | **0.59** | 0.978 | 0.86 |
+| petitRADTRANS → POS | 0.70 | 0.51 | 0.87 | **0.924** | 0.95 | 0.94 | 0.68 | 0.984 | 0.89 |
+| petitRADTRANS → petitRADTRANS | 0.76 | 0.61 | 0.90 | 0.997 | 0.96 | 0.97 | 0.85 | 0.994 | 0.90 |
+| petitRADTRANS → TauREx | 0.68 | 0.50 | 0.88 | 0.950 | 0.96 | 0.96 | 0.71 | 0.983 | 0.83 |
+| TauREx → POS | 0.68 | 0.47 | 0.86 | 0.970 | 0.95 | 0.95 | **0.62** | 0.977 | 0.89 |
+| TauREx → petitRADTRANS | 0.72 | 0.54 | 0.88 | 0.977 | 0.95 | 0.96 | **0.62** | 0.989 | 0.88 |
+| TauREx → TauREx | 0.76 | 0.60 | 0.90 | 0.997 | 0.96 | 0.96 | 0.86 | 0.994 | 0.90 |
+
+Median bias (predicted − true) caused by switching code (self-retrieval biases are all within ±1% of the range):
+
+| trained on → tested on | T (K) | chem3 (dex) | Rp (R_J) | Rs (R☉) |
+|---|---|---|---|---|
+| POS → petitRADTRANS / TauREx | +39 / +39 | +0.29 / +0.22 | −0.078 / −0.044 | −0.052 / −0.025 |
+| petitRADTRANS → POS / TauREx | −45 / −2 | −0.29 / +0.03 | +0.056 / +0.021 | +0.038 / +0.017 |
+| TauREx → POS / petitRADTRANS | −28 / +9 | −0.37 / −0.05 | +0.039 / −0.018 | +0.027 / −0.021 |
+
+- **Self retrieval is accurate for T and most abundances:**
+  - T: R² 0.997.
+  - chem1, chem2 and chem4: R² 0.96–0.99.
+  - Mp and chem5: about 0.90.
+  - chem3: 0.85.
+  - Rs and Rp are only partly constrained (R² 0.76 and 0.61), because the transit depth mainly fixes their ratio (Rp/Rs)².
+- **Cross retrieval adds code-dependent biases.**
+  - **T:** POS spectra retrieved with a petitRADTRANS- or TauREx-trained model come out 28–45 K cooler (median). The bias grows with T, reaching about −300 K at 3000 K for petitRADTRANS → POS (`bias_vs_true.png`). Going the other way, the POS-trained model makes the other codes about 39 K hotter. petitRADTRANS and TauREx are mutually consistent to within 10 K.
+  - **chem3 is the most code-sensitive parameter.** Its R² drops from 0.85 to 0.54–0.62 whenever POS is involved, with ±0.2–0.4 dex median bias and errors of 1–2 dex at low abundance.
+  - **Rp and Rs** shift by about 2–4% of their range, consistent with POS's shallower overall depth (see the residual analysis). Rp R² drops from 0.62 to 0.24–0.37 for POS-trained models.
+  - **chem1, chem2, chem4, chem5 and Mp are robust:** R² changes by ≤ 0.05, and biases are ≤ 1% of the range.
+- **The code systematics are a floor that more training data does not remove.** In the learning curves, self-retrieval R² keeps rising with the number of training planets. Cross-retrieval R² flattens or even falls (Rp and Rs for POS-trained models, T for petitRADTRANS-trained models), because the model becomes more specialised to its own code.
+- **Most models are overfitting and not fully converged.** Train RMSE keeps falling while val RMSE flattens early (`loss_curves_*.png`). Many models used all 3000 rounds for very small val gains, so stronger regularisation would cut training time with little loss in accuracy.
+- **Plots:**
+  - `true_vs_pred_<code>.png`
+  - `residual_spread.png`
+  - `code_bias.png` (bias matrix, % of range)
+  - `bias_vs_true.png`
+  - `learning_curves.png`
+  - `loss_curves_<code>.png`
