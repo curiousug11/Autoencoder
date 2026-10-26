@@ -472,3 +472,34 @@ Accuracy for planets whose codes differ by at least X ppm RMS:
   - planets around 1500 K;
   - high chem2 or chem5 (the abundances anti-correlated with T).
 - **This is the opposite of the autoencoder.** Low-gravity planets were the autoencoder's hardest to reconstruct, but they are the easiest to classify once there is noise. Their spectra are large and complex. Big features make the code differences stand out above the noise, but complex shapes are harder for an 8-dimensional bottleneck to reproduce.
+
+## Paired residual analysis (`residual_analysis.py`, `runs/residuals/`)
+
+Every planet has a noiseless spectrum from each code, so the code systematics are measured directly as difference spectra for the same planet. The analysis uses the 43,885 planets that pass the 210 ppm cut in all codes. Each difference is split into:
+- **Offset:** the wavelength-mean difference. It is degenerate with Rp in a fit, so it is reported separately and removed.
+- **Shape residual:** the rest, in ppm ("absolute") and as a fraction of the pair's mean feature height ("relative").
+
+Each pair's residuals then go through PCA. Each component score is correlated (Spearman) with the parameters and regressed on the 9 parameters with a random forest (out-of-sample R²).
+
+```
+python residual_analysis.py              # --no-cut for all planets, --n-components N
+```
+
+| pair | offset (median, 16–84%) | shape residual RMS (median / 90th pct) | relative to feature height | relative PCA: comps for 90% / 99% | R² of relative PC1–4 from parameters |
+|---|---|---|---|---|---|
+| POS − petitRADTRANS | −24 ppm (−109 to −9) | 10 / 91 ppm | 1.3% | 6 / 22 | 0.99, 0.96, 0.96, 0.95 |
+| POS − TauREx | −21 ppm (−86 to −8) | 10 / 75 ppm | 1.3% | 7 / 24 | 0.98, 0.94, 0.96, 0.95 |
+| petitRADTRANS − TauREx | +2 ppm (−1 to +21) | 8 / 75 ppm | 1.0% | 6 / 21 | 0.99, 0.96, 0.94, 0.96 |
+
+- **POS gives systematically shallower spectra than the other two codes.** The offset is about −20 to −25 ppm on median, and its size scales almost exactly with the feature height (Spearman −0.96 for POS − petitRADTRANS, −0.89 for POS − TauREx). That points to a different reference radius, reference pressure or scale-height treatment in POS. petitRADTRANS and TauREx agree on the offset to about 2 ppm.
+- **After the offset is removed, the codes agree to about 1–1.3% of the feature height** (median 8–10 ppm). The worst 10% of planets differ by 75–90 ppm; these are the large-feature planets.
+- **petitRADTRANS has two narrow, localised differences, at the 1.55 µm and 2.36 µm bins** (plus 2.31 µm). They dominate PC1 of both pairs that involve petitRADTRANS (55–60% of the variance). The 2.3–2.4 µm region holds the CO and CH4 bands, and 1.5 µm is near an NH3 / H2O band. This suggests an opacity or line-list difference there. Their strength tracks T and chem4 and anti-tracks chem1.
+- **POS − TauREx is dominated by a broad short-wavelength difference** (0.55–1.3 µm, PC1 60%), where POS is lower. It is driven almost entirely by chem1 (ρ = −0.78), consistent with a different treatment of the continuum (Rayleigh / collision-induced absorption) or of chem1's short-wavelength opacity. POS also shows a slight positive tilt towards long wavelengths (6–7.3 µm) against both other codes.
+- **The relative systematics are a near-deterministic function of the parameters.** Each of the first 4 relative components is predicted from the 9 parameters with R² ≥ 0.94. So the code differences could be emulated and corrected, or added as a modelled error term in retrievals. The absolute (ppm) components are less predictable (R² 0.1–0.65), because their size also scales with the feature amplitude.
+- **These are the same bins the random forest relies on most:** 1.27, 1.55 and 2.35 µm.
+
+Plots:
+- `residual_spectra.png`: residual bands vs wavelength.
+- `pca_components_{absolute,relative}.png`: component shapes, with approximate band positions.
+- `pca_drivers_{absolute,relative}.png`: parameter correlations.
+- `offsets.png`: offset over T and log g.
