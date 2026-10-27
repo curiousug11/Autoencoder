@@ -1,0 +1,469 @@
+% =====================================================================
+% Stage 3: Results and Analysis
+% Required packages: amsmath, amssymb, bm, booktabs
+% Notation follows Stage 2: codes PSN (POSEIDON), pRT (petitRADTRANS), TRX (TauREx).
+% In all comparison tables: bold = best, underline = second best among
+% realisable methods; the oracle is a reference and is never ranked.
+% =====================================================================
+
+\section{Results and Analysis}
+\label{sec:results}
+
+We first establish that the autoencoder reconstructs spectra accurately enough to serve as a detector (Section~\ref{sec:res_design}).
+We then report the structure of the inter-code systematics (Q1, Section~\ref{sec:res_q1}), their detectability with and without noise (Q2, Section~\ref{sec:res_q2}), and their effect on retrieval (Q3, Section~\ref{sec:res_q3}).
+Section~\ref{sec:res_cost} compares computational cost.
+Unless stated otherwise, reconstruction errors are mean squared errors in standardised units on the test set, and uncertainties are sample standard deviations over initialisation seeds.
+
+% ---------------------------------------------------------------------
+\subsection{Autoencoder design study}
+\label{sec:res_design}
+
+\paragraph{Linear versus nonlinear compression.}
+Table~\ref{tab:recon} compares principal component analysis (PCA) with the four autoencoder configurations of the $2\times2$ width--schedule design.
+With the same eight-dimensional code, every autoencoder reconstructs at least $58\times$ more accurately than PCA.
+AE-W with the cosine schedule reaches a test MSE of $6.55\times10^{-5}$, about $200\times$ below PCA with $k=8$ components ($1.30\times10^{-2}$).
+It is also $24\times$ below PCA with $k=16$ ($1.59\times10^{-3}$), which uses twice as many latent variables.
+PCA needs 13, 25, and 39 components to explain 99\%, 99.9\%, and 99.99\% of the variance.
+The standardised spectra therefore lie on a low-dimensional but curved manifold.
+A linear basis must spend many components to approximate this curvature; a nonlinear encoder can parameterise it directly.
+This agrees with the forward model of Eq.~\eqref{eq:forward}: transit depth depends on $\bm{\theta}$ through exponential and logarithmic terms in the optical depth and scale height~\cite{TODO_benneke_seager_transmission_scaleheight}, and these terms do not combine linearly.
+
+\begin{table*}[t]
+  \centering
+  \caption{Reconstruction of POSEIDON spectra by linear and nonlinear compressors with an 8-dimensional code (PCA is also shown with $k=16$). Errors are MSE in standardised units ($\times10^{-4}$). Autoencoder rows are means over the two seeds shared by all four configurations (42, 43); the test column also gives the seed standard deviation. With a third seed, AE-W\,/\,cosine gives $0.80\pm0.26$. Bold: best; underline: second best. PCA parameters count the basis vectors and the mean; MACs count encoding plus decoding.}
+  \label{tab:recon}
+  \begin{tabular}{llrrrrrrr}
+    \toprule
+    Model & Schedule\,/\,$P_{\mathrm{es}}$ & Params & MACs & Time (s) & Val & Test & Median & $P_{95}$ \\
+    \midrule
+    PCA, $k=8$  & --               & 468      & 832      & --   & --                  & $130 $                              & $84.9$              & $385$ \\
+    PCA, $k=16$ & --               & 884      & 1{,}664  & --   & --                  & $15.9$                              & $10.4$              & $44.6$ \\
+    \midrule
+    AE-S        & plateau\,/\,20   & 35{,}612  & 35{,}072  & 411   & $1.98$              & $2.08\pm0.17$                       & $0.95$              & $6.33$ \\
+    AE-S        & cosine\,/\,50    & 35{,}612  & 35{,}072  & 651   & \underline{$1.05$}  & \underline{$1.10\pm0.04$}           & \underline{$0.49$}  & \underline{$3.40$} \\
+    AE-W        & plateau\,/\,20   & 114{,}972 & 113{,}920 & 662   & $2.10$              & $2.22\pm1.44$                       & $0.64$              & $7.51$ \\
+    AE-W        & cosine\,/\,50    & 114{,}972 & 113{,}920 & 1123  & $\mathbf{0.58}$     & $\mathbf{0.66\pm0.08}$              & $\mathbf{0.20}$     & $\mathbf{1.85}$ \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+\paragraph{Ablation: width and schedule.}
+The cosine schedule with $P_{\mathrm{es}}=50$ lowers the AE-S test MSE from $2.08\times10^{-4}$ to $1.10\times10^{-4}$ ($1.9\times$).
+It also reduces the spread across seeds from $\pm1.7\times10^{-5}$ to $\pm4\times10^{-6}$.
+Both cosine runs train for the full 1000 epochs.
+For the seed that completed training under both widths (43), widening the network lowers the test MSE from $2.20\times10^{-4}$ to $1.20\times10^{-4}$ ($1.8\times$).
+Combining both changes lowers it to $6.55\times10^{-5}$ ($3.2\times$), so the two effects approximately multiply.
+The plateau schedule shows a failure mode: for AE-W with seed 42, repeated halving drove the learning rate to $3.9\times10^{-6}$ by epoch 334.
+The run then met the early-stopping criterion at a test MSE of $3.23\times10^{-4}$, $2.7\times$ worse than the same architecture with seed 43.
+The schedule and the patience change together in this design, so we attribute the improvement to the pair, not to the schedule alone.
+For AE-W with the cosine schedule, the training loss at the selected epoch ($3.9$--$4.4\times10^{-5}$ for seeds 42 and 43) falls below the validation loss ($5.7$--$5.9\times10^{-5}$).
+This train--validation gap is absent for AE-S.
+AE-W is therefore no longer limited by capacity, and further gains would require regularisation or more data rather than width.
+
+\paragraph{Ablation: latent dimension.}
+Table~\ref{tab:latent} reports the bottleneck sweep.
+The test MSE falls by a factor of 17 from $L=4$ to $L=8$ and is flat within single-seed variation for $L\geq8$ ($1.6$--$2.4\times10^{-4}$).
+Two exceptions, $L=7$ and $L=12$, stopped early, after 359 and 356 epochs, on a transient plateau of the validation loss.
+The lowest validation MSE occurs at $L=9$, but the difference from $L=8$ ($1.64$ versus $1.98\times10^{-4}$) is smaller than the seed-to-seed spread at fixed $L$ ($\pm1.1\times10^{-4}$; Table~\ref{tab:act}).
+We therefore adopt $L=8$ as the smallest dimension on the plateau.
+The spectra are generated from nine parameters, which bounds the intrinsic dimension of the standardised spectra from above.
+Standardisation removes the absolute depth and the amplitude, two functions of $\bm{\theta}$, so the shape manifold can have fewer than nine dimensions.
+
+\begin{table}[t]
+  \centering
+  \caption{Bottleneck sweep for AE-S with the plateau schedule (one seed). MSE in units of $10^{-4}$. $L=7$ and $L=12$ stopped early on a transient plateau.}
+  \label{tab:latent}
+  \begin{tabular}{rrrr}
+    \toprule
+    $L$ & Val & Test & Epochs \\
+    \midrule
+    4  & $35.4$ & $33.7$ & 320 \\
+    5  & $13.2$ & $13.1$ & 358 \\
+    6  & $4.32$ & $4.37$ & 395 \\
+    7  & $5.16$ & $5.25$ & 359 \\
+    8  & $1.98$ & $1.96$ & 747 \\
+    9  & $\mathbf{1.64}$ & $\mathbf{1.64}$ & 648 \\
+    10 & $1.95$ & $1.97$ & 726 \\
+    11 & $2.15$ & $2.12$ & 841 \\
+    12 & $4.91$ & $4.90$ & 356 \\
+    13 & $1.85$ & $1.83$ & 1000 \\
+    14 & $2.48$ & $2.41$ & 661 \\
+    15 & $1.85$ & $1.80$ & 579 \\
+    16 & \underline{$1.77$} & \underline{$1.78$} & 720 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Ablation: activation function.}
+Table~\ref{tab:act} compares nine activations with AE-S, $L=8$, and the plateau schedule, over three seeds.
+GELU has the lowest mean validation and test MSE.
+ReLU has the highest test MSE, $8.44\times10^{-4}$, which is $3.1\times$ that of GELU.
+Spectra are smooth functions of wavelength and of $\bm{\theta}$, whereas a ReLU network is piecewise linear in its input.
+It must therefore approximate a curved manifold with a finite number of linear pieces, which is a weaker inductive bias for this data than a smooth activation.
+Smoothness is not sufficient on its own: softplus is smooth but ranks second to last.
+GELU, SiLU, Mish, tanh, and ELU each reach $1.8$--$2.6\times10^{-4}$ on their best seed and overlap within seed variation; no seed of ReLU, leaky ReLU, SELU, or softplus goes below $3.9\times10^{-4}$.
+Within this group, run length explains most of the variation: the Spearman correlation between the number of epochs before early stopping and the test MSE is $-0.85$ ($n=15$).
+The six runs that stopped before 450 epochs end at $4.0$--$5.8\times10^{-4}$, and the four that ran beyond 750 epochs reach $1.8$--$2.4\times10^{-4}$.
+The ranking among smooth activations is therefore dominated by when the plateau schedule stops training, consistent with the schedule ablation above.
+
+\begin{table}[t]
+  \centering
+  \caption{Activation ablation (AE-S, $L=8$, plateau schedule, three seeds). MSE in units of $10^{-4}$; the median column averages the per-run medians. Bold: best; underline: second best.}
+  \label{tab:act}
+  \begin{tabular}{lrrrrr}
+    \toprule
+    $\varphi$ & Val & Test & Best seed & Median & Epochs \\
+    \midrule
+    ReLU        & $8.08$ & $8.44\pm2.98$ & $6.56$ & $4.56$ & 579 \\
+    Leaky ReLU  & $4.54$ & $4.60\pm0.32$ & $4.31$ & $2.43$ & 511 \\
+    Softplus    & $5.72$ & $5.87\pm0.24$ & $5.67$ & $2.01$ & 409 \\
+    SELU        & $4.27$ & $4.34\pm0.36$ & $3.93$ & $2.31$ & 406 \\
+    ELU         & $3.71$ & $3.80\pm1.74$ & $2.59$ & $1.57$ & 420 \\
+    Mish        & $3.55$ & $3.69\pm1.63$ & $\mathbf{1.83}$ & $1.26$ & 586 \\
+    SiLU        & $3.53$ & $3.58\pm1.38$ & $2.01$ & \underline{$1.25$} & 601 \\
+    tanh        & \underline{$3.23$} & \underline{$3.38\pm1.77$} & $2.34$ & $1.34$ & 715 \\
+    GELU        & $\mathbf{2.75}$ & $\mathbf{2.73\pm1.13}$ & \underline{$1.96$} & $\mathbf{1.12}$ & 571 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Autoencoder error in physical units.}
+For the cross-code models (AE-W, cosine schedule), the own-code test MSE is $1.96\times10^{-4}$ for POSEIDON, $1.56\times10^{-4}$ for petitRADTRANS, and $5.54\times10^{-5}$ for TauREx.
+Multiplying the per-spectrum root-mean-square error by $s(\mathbf{y})$ gives the reconstruction error in transit depth.
+Its median is $0.9$--$1.2\,\mathrm{ppm}$ across the three codes, with 99th percentiles of $85$--$135\,\mathrm{ppm}$.
+For 98.7--99.9\% of test planets the own-code reconstruction error is smaller than the inter-code residual amplitude $\rho_i^{(ab)}$ of the same planet.
+For typical planets, the autoencoders therefore resolve differences well below the inter-code signal.
+The heavy upper tail of the error distribution limits detection, as Section~\ref{sec:res_q2} shows.
+
+% ---------------------------------------------------------------------
+\subsection{Q1: Structure of the inter-code systematics}
+\label{sec:res_q1}
+
+Table~\ref{tab:resid} summarises the paired decomposition of Eq.~\eqref{eq:offset} over the 43{,}885 planets of the cross-code set.
+
+\begin{table*}[t]
+  \centering
+  \caption{Paired inter-code residuals on noise-free spectra. $\delta$: wavelength-mean offset; $\rho$: root-mean-square shape residual after offset removal (Eq.~\ref{eq:rho}); $\rho/\bar h$: median relative residual. $n_{90}$, $n_{99}$: number of principal components of the relative residual needed for 90\% and 99\% of its variance. $R^2_{1\text{--}4}$: out-of-sample $R^2$ of the first four component scores regressed on $\bm{\theta}$, for relative and absolute residuals.}
+  \label{tab:resid}
+  \begin{tabular}{lrrrrrcl}
+    \toprule
+    Pair $(a-b)$ & $\delta$ median [$P_{16}$, $P_{84}$] (ppm) & $\rho$ median (ppm) & $\rho$ $P_{90}$ (ppm) & $\rho/\bar h$ & $n_{90}/n_{99}$ & $R^2_{1\text{--}4}$ (relative) & $R^2_{1\text{--}4}$ (absolute) \\
+    \midrule
+    PSN $-$ pRT & $-24.4$ [$-109.3$, $-9.4$] & 10.2 & 91.2 & 1.3\% & 6/22 & 0.99, 0.96, 0.96, 0.95 & 0.40--0.62 \\
+    PSN $-$ TRX & $-20.8$ [$-85.8$, $-7.8$]  & 10.0 & 75.0 & 1.3\% & 7/24 & 0.98, 0.94, 0.96, 0.95 & 0.28--0.65 \\
+    pRT $-$ TRX & $+2.1$ [$-1.1$, $+20.7$]   & 8.3  & 74.8 & 1.0\% & 6/21 & 0.99, 0.96, 0.94, 0.96 & 0.10--0.54 \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+\paragraph{Offsets.}
+POSEIDON spectra are systematically shallower than those of the other two codes, with median offsets of $-24$ and $-21\,\mathrm{ppm}$.
+The offset magnitude scales with feature height: its Spearman correlation with $h$ is $-0.96$ (PSN$-$pRT) and $-0.89$ (PSN$-$TRX).
+It also correlates with $\log_{10}(H/R_p)$, with $\rho_{\mathrm{S}}=-0.64$ and $-0.59$.
+A difference that grows with the scale height and the feature amplitude is consistent with a different reference radius or reference pressure, or a different treatment of the scale height, in POSEIDON [TODO: VERIFY reference pressure and radius conventions of each code].
+petitRADTRANS and TauREx agree on the offset to within $2\,\mathrm{ppm}$ in the median.
+The offset is degenerate with $R_p$ and is removed by standardisation, so it is invisible to the detectors of Section~\ref{sec:res_q2}.
+It nevertheless propagates into retrieved radii (Section~\ref{sec:res_q3}).
+
+\paragraph{Shape residuals.}
+After offset removal, the codes agree to a median of 8--10\,ppm, or 1.0--1.3\% of the feature height.
+The 90th percentile is 75--91\,ppm; these are the planets with the largest features.
+The residuals are not white.
+The relative residuals require only 6--7 components to capture 90\% of their variance, and each leading component has a well-defined spectral location:
+\begin{itemize}
+  \item Both pairs that involve petitRADTRANS are dominated by a component (55--60\% of the variance) concentrated in three narrow bins at $1.55$, $2.31$, and $2.36\,\mu$m.
+  Its amplitude tracks $T$ and $\log_{10}X_{\mathrm{CO_2}}$ and anti-tracks $\log_{10}X_{\mathrm{H_2O}}$ ($|\rho_{\mathrm{S}}|=0.39$--$0.52$; the sign of each correlation depends on the order of the pair).
+  Localised differences of this kind are expected where correlated-$k$ opacities at $R=1000$ and cross-sections at $R=15{,}000$ sample strong, narrow band structure differently~\cite{TODO_correlated_k_vs_line_by_line_accuracy}.
+  We list this as a hypothesis; a band-by-band comparison of opacities is required to confirm it.
+  \item The leading component of PSN$-$TRX (60\%) is a broad deficit at short wavelengths, $0.55$--$1.27\,\mu$m, driven almost entirely by $\log_{10}X_{\mathrm{H_2O}}$ ($\rho_{\mathrm{S}}=-0.78$).
+  This pattern indicates a difference in the short-wavelength continuum (Rayleigh scattering or collision-induced absorption) or in the near-infrared water opacity [TODO: VERIFY by comparing the default continuum opacities of the two codes].
+\end{itemize}
+
+\paragraph{Determinism of the systematics.}
+Each of the first four relative components is predicted from $\bm{\theta}$ with out-of-sample $R^2\geq0.94$.
+The absolute components are less predictable ($R^2=0.10$--$0.65$), because their amplitude also scales with the feature height, which the regression does not receive directly.
+To first order, the inter-code systematics are therefore a deterministic, low-dimensional function of the planet parameters.
+They could be emulated and either corrected or included as a modelled error term in retrievals.
+
+% ---------------------------------------------------------------------
+\subsection{Q2: Detectability of the generating code}
+\label{sec:res_q2}
+
+\paragraph{Noise-free detection.}
+Table~\ref{tab:auc0} lists the one-class detection performance on noise-free spectra.
+Every ordered pair is separated with $\mathrm{AUC}\geq0.962$.
+Spectra from another code have median reconstruction errors $42$--$74\times$ higher than the training code's own spectra.
+At the $95$th-percentile threshold the detectors flag 78--98\% of other-code spectra, and $4.8$--$5.0\%$ of own-code spectra, which is the nominal rate.
+The TauREx model separates best ($\mathrm{AUC}=0.992$ and $0.988$).
+It also has the lowest own-code reconstruction error, which produces a tighter nominal distribution and a lower threshold.
+The detectors remain effective for planets with small inter-code differences.
+For planets with $\rho^{(ab)}<5\,\mathrm{ppm}$, which make up 26--33\% of the test set, the AUC is still $0.934$--$0.993$, against $0.960$--$0.997$ for larger $\rho^{(ab)}$.
+Without noise, the inter-code signal is therefore resolved even at the few-ppm level.
+
+\begin{table}[t]
+  \centering
+  \caption{One-class detection on noise-free test spectra (6{,}583 planets per code). The ratio column gives the median error on other-code spectra divided by the median error on own-code spectra. Flagged fractions use the validation-set thresholds $\tau^{(95)}_c$ and $\tau^{(99)}_c$. Bold: best; underline: second best.}
+  \label{tab:auc0}
+  \begin{tabular}{llrrrr}
+    \toprule
+    Trained on & Tested on & AUC & Ratio & Flag $\tau^{(95)}$ & Flag $\tau^{(99)}$ \\
+    \midrule
+    PSN & pRT & $0.962$ & 42 & 83.2\% & 29.4\% \\
+    PSN & TRX & $0.964$ & 46 & 78.2\% & 33.5\% \\
+    pRT & PSN & $0.970$ & 56 & 87.7\% & 38.3\% \\
+    pRT & TRX & $0.968$ & 49 & 84.9\% & 32.6\% \\
+    TRX & PSN & $\mathbf{0.992}$ & $\mathbf{74}$ & $\mathbf{97.7\%}$ & $\mathbf{79.5\%}$ \\
+    TRX & pRT & \underline{$0.988$} & \underline{58} & \underline{$95.8\%$} & \underline{$78.4\%$} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Ablation: model selection over seeds.}
+With a single initialisation seed, the POSEIDON and petitRADTRANS detectors reach $\mathrm{AUC}=0.945$--$0.956$.
+Selecting the run with the lowest own-code validation loss among three seeds raises this to $0.962$--$0.970$.
+The selection lowers the own-code validation MSE from $2.28$ to $2.00\times10^{-4}$ (POSEIDON) and from $2.56$ to $1.51\times10^{-4}$ (petitRADTRANS).
+Detection performance is therefore set by the quality of the nominal reconstruction, not by any property of the anomalous data, which are never used for selection.
+The TauREx detector uses a single seed and still has the best reconstruction.
+Its advantage is therefore not an artefact of selecting over more seeds.
+
+\paragraph{Detection under noise.}
+Table~\ref{tab:noise} reports the mean AUC over the six code pairs as a function of $\sigma$.
+The reconstruction score $e_c$ degrades fastest: from $0.974$ without noise to $0.746$ at $5\,\mathrm{ppm}$ and $0.628$ at $10\,\mathrm{ppm}$, approaching chance by $30\,\mathrm{ppm}$.
+Two factors explain this.
+First, the median inter-code residual is $\rho\approx9$--$11\,\mathrm{ppm}$, so at $\sigma\gtrsim10\,\mathrm{ppm}$ the noise power per bin exceeds the signal for most planets.
+Second, $e_c$ is computed in standardised units and has no notion of the measurement uncertainty: it penalises noise and inter-code differences equally.
+The $\chi^2_\nu$ score of Eq.~\eqref{eq:chi2} weights residuals by the error bars.
+It outperforms $e_c$ at every $\sigma\geq5\,\mathrm{ppm}$ and roughly doubles the margin above chance at 10--50\,ppm (0.735 versus 0.628 at 10\,ppm; 0.596 versus 0.517 at 50\,ppm).
+At $\sigma=2\,\mathrm{ppm}$, $e_c$ performs better, because the autoencoder's own error tail is large compared with the error bars.
+
+\begin{table*}[t]
+  \centering
+  \caption{Code separability versus white noise: AUC averaged over the six ordered code pairs. $e_c$: standardised reconstruction error (Eq.~\ref{eq:score}); $\chi^2_\nu$: error-bar-weighted score (Eq.~\ref{eq:chi2}); RF: pairwise score of the supervised classifier (Eq.~\ref{eq:pairscore}), trained and tested at the same $\sigma$. The oracle (Eq.~\ref{eq:oracle}) requires the true parameters and is not ranked. Bold: best; underline: second best among realisable methods. --: not evaluated.}
+  \label{tab:noise}
+  \begin{tabular}{lrrrrrrrr}
+    \toprule
+    Method & $\sigma=0$ & 2 & 5 & 10 & 20 & 30 & 50 & 100\,ppm \\
+    \midrule
+    AE, $e_c$                    & \underline{$0.974$} & $\mathbf{0.909}$     & \underline{$0.746$} & $0.628$             & $0.557$             & $0.534$             & $0.517$             & \underline{$0.506$} \\
+    AE, $\chi^2_\nu$             & --                  & \underline{$0.834$}  & $\mathbf{0.794}$    & \underline{$0.735$} & \underline{$0.669$} & \underline{$0.632$} & \underline{$0.596$} & $\mathbf{0.561}$ \\
+    Denoising AE, $\chi^2_\nu$   & --                  & --                   & --                  & $0.680$             & $0.630$             & $0.597$             & $0.559$             & -- \\
+    Random forest                & $\mathbf{0.999}$    & --                   & --                  & $\mathbf{0.945}$    & $\mathbf{0.886}$    & $\mathbf{0.838}$    & $\mathbf{0.775}$    & -- \\
+    \midrule
+    \textit{Oracle} $\chi^{2\star}_\nu$ & --           & \textit{0.999}       & \textit{0.985}      & \textit{0.949}      & \textit{0.876}      & \textit{0.821}      & \textit{0.748}      & \textit{0.662} \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+\paragraph{Calibration.}
+The AUC measures ranking, not usable detection at a fixed false-positive rate.
+Table~\ref{tab:calib} reports both.
+With the theoretical threshold $\tau^{\mathrm{th}}$, the noise-free-trained detector flags 18--49\% of other-code spectra at 10--50\,ppm.
+However, it also flags 6.6--14.0\% of own-code spectra instead of the nominal 1\%.
+The excess comes from the upper tail of the autoencoder's reconstruction error, which is large compared with $\sigma$ for the hardest planets.
+With the empirical threshold $\tau^{\mathrm{emp}}$, the realised own-code false-positive rate is 0.8\%, close to nominal.
+At this threshold, however, only $4.1$--$4.2\%$ of other-code spectra are flagged, roughly independent of $\sigma$.
+The oracle, at its nominal 1\% rate, flags 36--81\% of other-code spectra.
+This contrast locates the limitation: the data contain substantial separable signal at 10--50\,ppm, but the one-class detector's worst-case reconstruction error masks it.
+
+\begin{table}[t]
+  \centering
+  \caption{Detection at a nominal 1\% false-positive rate, mean over code pairs. FPR: own-code test spectra flagged. TPR: other-code test spectra flagged. ``Theory'': $\tau^{\mathrm{th}}=1.512$; ``Empirical'': 99th percentile of $\chi^2_\nu$ on noisy own-code validation spectra. Bold: best; underline: second best among realisable rows, for TPR at the empirical threshold.}
+  \label{tab:calib}
+  \begin{tabular}{llrrrr}
+    \toprule
+    Model & Metric & 10 & 20 & 30 & 50\,ppm \\
+    \midrule
+    AE           & FPR (theory)    & 14.0\% & 9.3\%  & 7.5\%  & 6.6\% \\
+                 & TPR (theory)    & 49.2\% & 31.8\% & 24.3\% & 18.0\% \\
+                 & FPR (empirical) & 0.8\%  & 0.8\%  & 0.8\%  & 0.8\% \\
+                 & TPR (empirical) & $\mathbf{4.1\%}$ & $\mathbf{4.1\%}$ & $\mathbf{4.1\%}$ & $\mathbf{4.2\%}$ \\
+    \midrule
+    Denoising AE & FPR (theory)    & 22.4\% & 14.7\% & 12.0\% & 10.5\% \\
+                 & TPR (theory)    & 49.3\% & 32.4\% & 24.5\% & 17.7\% \\
+                 & FPR (empirical) & 0.9\%  & 0.8\%  & 0.8\%  & 0.8\% \\
+                 & TPR (empirical) & \underline{2.5\%} & \underline{2.5\%} & \underline{2.1\%} & \underline{1.6\%} \\
+    \midrule
+    \textit{Oracle} & \textit{FPR (theory)} & \textit{1.0\%} & \textit{1.0\%} & \textit{1.0\%} & \textit{0.9\%} \\
+                    & \textit{TPR (theory)} & \textit{81.3\%} & \textit{61.5\%} & \textit{49.4\%} & \textit{35.6\%} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Ablation: denoising objective.}
+Training with noisy inputs and clean targets (Eq.~\ref{eq:lden}) does not improve detection.
+The denoising models have a lower AUC than the noise-free models at every $\sigma$ (Table~\ref{tab:noise}), and a lower true-positive rate at the empirical threshold (Table~\ref{tab:calib}).
+Their own-code false-positive rate under $\tau^{\mathrm{th}}$ is about $1.6\times$ higher.
+Ten of the twelve denoising runs met the early-stopping criterion, between 226 and 885 epochs, because the noisy validation loss flattens early.
+Stopping early leaves the hardest spectra less well reconstructed, which widens the nominal tail that sets the threshold.
+A denoising objective trades worst-case accuracy for average-case accuracy.
+For a threshold-based detector this is the wrong trade, because the threshold is set by the worst cases.
+
+\paragraph{Supervised versus one-class.}
+The three-class random forest separates the codes far better than any autoencoder score at every noise level (Table~\ref{tab:noise}).
+Its accuracy is $0.968$, $0.783$, $0.684$, $0.617$, and $0.549$ at $\sigma=0$, 10, 20, 30, and 50\,ppm (chance $=0.333$).
+At $\sigma\geq20\,\mathrm{ppm}$ its pairwise AUC is slightly above the oracle's.
+The two methods answer different questions.
+The oracle is a one-class goodness-of-fit test: it asks whether a spectrum is consistent with code $c$, and it is optimal only against an unspecified alternative.
+The classifier sees all three codes during training and learns the specific directions $\bm{\Delta}^{(ab)}$ along which they differ.
+It can therefore project out noise orthogonal to those directions.
+The reconstruction objective of the autoencoder contains no information about these directions.
+The classifier's inductive bias, supervision on the alternative hypotheses, matches the detection task; the autoencoder's does not.
+petitRADTRANS is the hardest class at every $\sigma$, with recall $0.95$ at 0\,ppm and $0.50$ at 50\,ppm.
+pRT$-$TRX is the closest pair in Table~\ref{tab:resid}, with the smallest offset and the smallest $\rho$.
+This does not explain why petitRADTRANS is harder to identify than TauREx, which has a recall of $0.98$ at 0\,ppm and $0.54$ at 50\,ppm.
+The training accuracy is $1.000$ at every $\sigma$, so the forest overfits.
+Its test performance is a lower bound on that of a regularised classifier.
+
+\paragraph{Which planets are detectable.}
+Classifier accuracy depends mainly on the amplitude of the inter-code signal (Table~\ref{tab:rfrho}).
+At $\sigma=50\,\mathrm{ppm}$, planets with mean residual $\bar\rho\geq30\,\mathrm{ppm}$ (23.6\% of the test set) are attributed correctly 80.9\% of the time, against 54.9\% for all planets.
+Under noise, the most detectable planets are the low-gravity, large-feature planets, which produce the largest absolute differences between codes.
+At 50\,ppm, accuracy is $0.72$ in the lowest and $0.45$ in the highest octile of $\log g$, and $0.37$ in the lowest and $0.81$ in the highest octile of feature height.
+
+\begin{table}[t]
+  \centering
+  \caption{Random-forest accuracy for test planets whose mean inter-code residual $\bar\rho$ exceeds a threshold. ``All'': overall accuracy.}
+  \label{tab:rfrho}
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    $\bar\rho$ & Share & $\sigma=0$ & 10 & 20 & 30 & 50\,ppm \\
+    \midrule
+    All               & 100\%  & 0.968 & 0.783 & 0.684 & 0.617 & 0.549 \\
+    $\geq10$\,ppm     & 51.0\% & 0.967 & 0.905 & 0.835 & 0.769 & 0.687 \\
+    $\geq30$\,ppm     & 23.6\% & 0.953 & 0.924 & 0.903 & 0.867 & 0.809 \\
+    $\geq50$\,ppm     & 15.8\% & 0.948 & 0.924 & 0.912 & 0.885 & 0.846 \\
+    $\geq100$\,ppm    & 8.6\%  & 0.932 & 0.913 & 0.909 & 0.882 & 0.851 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Planets that limit the autoencoders.}
+The worst-reconstructed 5\% of own-code held-out spectra (658 of 13{,}166 planets) are strongly concentrated in two regions of parameter space:
+\begin{itemize}
+  \item cool atmospheres: median $T$ of 768\,K versus 1940\,K for the remaining planets in POSEIDON, with $A_T=0.16$, $0.17$, and $0.33$ for POSEIDON, petitRADTRANS, and TauREx;
+  \item low surface gravity, with $A_{\log g}=0.24$, $0.22$, and $0.17$, and correspondingly large $H/R_p$ ($A=0.59$, $0.62$, $0.80$).
+\end{itemize}
+The feature height has no comparable effect ($A_h=0.52$--$0.66$), so these are not spectra near the selection threshold.
+The poorly reconstructed sets largely coincide across codes.
+POSEIDON and petitRADTRANS share 479 of 658 planets, where 33 are expected by chance, and the Spearman correlation of their per-planet errors is $0.92$.
+291 planets are poorly reconstructed in all three codes.
+The difficulty is therefore a property of the planet, not of the code.
+Both regions are sparsely populated after selection.
+The feature-height cut retains 18.6\% of planets with $T<600$\,K, against 55.1\% with $T>2000$\,K.
+Only 2{,}092 selected planets (4.8\%) have $\log g<-0.9$, the low-mass edge of the $M_p$ prior.
+These same low-gravity planets are the easiest to classify under noise.
+Their spectra are large and structured, which makes the code differences large in absolute terms, but also hard to compress into eight dimensions.
+
+% ---------------------------------------------------------------------
+\subsection{Q3: Retrieval bias from code mismatch}
+\label{sec:res_q3}
+
+Table~\ref{tab:retr} compares self- and cross-retrieval.
+Without noise, self-retrieval recovers $T$, $\log_{10}X_{\mathrm{CO_2}}$, $\log_{10}X_{\mathrm{CH_4}}$, and $\log_{10}X_{\mathrm{H_2O}}$ with $R^2=0.959$--$0.997$.
+$R_p$ and $R_\star$ are only partly constrained ($R^2=0.61$ and $0.76$), because the transit depth fixes mainly the ratio $(R_p/R_\star)^2$.
+Replacing the test code reduces $R^2$ for every parameter.
+The largest losses are for $\log_{10}X_{\mathrm{CO}}$ ($0.851\rightarrow0.627$) and $R_p$ ($0.609\rightarrow0.437$).
+The smallest are for the water, carbon dioxide, and methane abundances ($\leq0.015$).
+The worst single cross-retrieval is $R_p$ from TauREx spectra with a POSEIDON-trained model ($R^2=0.238$).
+
+\begin{table*}[t]
+  \centering
+  \caption{XGBoost retrieval $R^2$ on test planets. Self: mean over the three codes ($b=a$). Cross: mean over the six pairs ($b\neq a$). Gap: self minus cross. Models are trained without noise; the noisy rows apply the same models to test spectra with white noise. In the gap rows, bold marks the largest and underline the second-largest self--cross gap.}
+  \label{tab:retr}
+  \begin{tabular}{llrrrrrrrrr}
+    \toprule
+    $\sigma$ & & $T$ & $\log X_{\mathrm{CO_2}}$ & $\log X_{\mathrm{CH_4}}$ & $\log X_{\mathrm{H_2O}}$ & $M_p$ & $\log X_{\mathrm{NH_3}}$ & $\log X_{\mathrm{CO}}$ & $R_\star$ & $R_p$ \\
+    \midrule
+    0\,ppm  & Self  & 0.997 & 0.994 & 0.966 & 0.959 & 0.901 & 0.901 & 0.851 & 0.761 & 0.609 \\
+            & Cross & 0.963 & 0.983 & 0.951 & 0.953 & 0.866 & 0.873 & 0.627 & 0.661 & 0.437 \\
+            & Gap   & 0.034 & 0.011 & 0.015 & 0.006 & 0.035 & 0.028 & $\mathbf{0.224}$ & 0.100 & \underline{0.172} \\
+    \midrule
+    10\,ppm & Self  & 0.962 & 0.964 & 0.900 & 0.888 & 0.856 & 0.790 & 0.596 & 0.578 & 0.349 \\
+            & Cross & 0.931 & 0.954 & 0.891 & 0.884 & 0.834 & 0.774 & 0.438 & 0.525 & 0.250 \\
+            & Gap   & 0.031 & 0.010 & 0.009 & 0.004 & 0.022 & 0.016 & $\mathbf{0.158}$ & 0.053 & \underline{0.099} \\
+    \midrule
+    50\,ppm & Self  & 0.678 & 0.769 & 0.680 & 0.541 & 0.608 & 0.296 & $-0.459$ & $-0.010$ & $-0.572$ \\
+            & Cross & 0.659 & 0.764 & 0.674 & 0.538 & 0.600 & 0.291 & $-0.533$ & $-0.015$ & $-0.598$ \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+\paragraph{Bias structure.}
+Table~\ref{tab:bias} lists the median biases for the most affected parameters.
+Self-retrieval biases are negligible ($|\beta_T|<0.4\,\mathrm{K}$, $|\beta_{\mathrm{CO}}|\leq0.03\,\mathrm{dex}$).
+Cross-retrieval biases are largest whenever POSEIDON is involved.
+pRT$\leftrightarrow$TRX biases are small: at most $9\,\mathrm{K}$ in $T$ and $0.05\,\mathrm{dex}$ in CO.
+This pattern matches the residual structure of Table~\ref{tab:resid}, where the two pairs involving POSEIDON have the largest offsets and short-wavelength differences.
+The temperature bias depends on temperature.
+For petitRADTRANS-trained models applied to POSEIDON spectra it grows from $-19\,\mathrm{K}$ at $T\approx760\,\mathrm{K}$ to $-272\,\mathrm{K}$ at $T\approx2830\,\mathrm{K}$ (median per temperature sextile), and reaches $-330\,\mathrm{K}$ in the hottest 5\% of planets.
+The $R_p$ and $R_\star$ biases have the same sign in all six pairs.
+This is consistent with partial compensation along the $R_p$--$R_\star$ degeneracy of the transit depth.
+The CO abundance is the most code-sensitive parameter in relative terms, with biases of 3.6--6.2\% of its prior range whenever POSEIDON is involved.
+CO has the weakest self-retrieval constraint among the five molecules ($R^2=0.85$).
+For a weakly constrained parameter, a small systematic change in the spectrum maps onto a large change in the estimate.
+
+\begin{table}[t]
+  \centering
+  \caption{Median retrieval bias $\beta$ (predicted $-$ true) on noise-free test spectra for the most code-sensitive parameters. Self-retrieval biases are $|\beta_T|<0.4$\,K, $|\beta_{\mathrm{CO}}|\leq0.03$\,dex, $|\beta_{R_p}|\leq0.012\,R_{\mathrm J}$, and $|\beta_{R_\star}|\leq0.011\,R_\odot$.}
+  \label{tab:bias}
+  \begin{tabular}{lrrrr}
+    \toprule
+    Trained $\rightarrow$ tested & $T$ (K) & $\log X_{\mathrm{CO}}$ (dex) & $R_p$ ($R_{\mathrm J}$) & $R_\star$ ($R_\odot$) \\
+    \midrule
+    PSN $\rightarrow$ pRT & $+39.1$ & $+0.29$ & $-0.078$ & $-0.052$ \\
+    PSN $\rightarrow$ TRX & $+38.6$ & $+0.22$ & $-0.044$ & $-0.025$ \\
+    pRT $\rightarrow$ PSN & $-45.0$ & $-0.29$ & $+0.056$ & $+0.038$ \\
+    pRT $\rightarrow$ TRX & $-1.9$  & $+0.03$ & $+0.021$ & $+0.017$ \\
+    TRX $\rightarrow$ PSN & $-27.5$ & $-0.37$ & $+0.039$ & $+0.027$ \\
+    TRX $\rightarrow$ pRT & $+9.1$  & $-0.05$ & $-0.018$ & $-0.021$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Ablation: training-set size.}
+More training data widens the gap between self- and cross-retrieval instead of closing it.
+From 5\% to 100\% of the training planets, the self-retrieval $R^2$ for CO rises from $0.653$ to $0.851$, while the cross-retrieval $R^2$ rises only from $0.547$ to $0.627$; the gap doubles from $0.106$ to $0.224$.
+For $R_p$ the gap grows from $0.006$ to $0.172$.
+The cross-retrieval $R^2$ peaks at 50\% of the data ($0.460$) and declines with the full set ($0.437$).
+Cross-retrieval of $T$ is flat at $0.950$--$0.963$ over the whole range, while self-retrieval improves from $0.978$ to $0.997$.
+A more accurate emulator of one code is a more specialised one, so the code systematics set a floor on cross-code accuracy that additional simulations of a single code do not lower.
+
+\paragraph{Interaction with noise.}
+Noise reduces $R^2$ for all parameters and closes most self--cross gaps (Table~\ref{tab:retr}).
+At 50\,ppm the cross-retrieval $R^2$ is negative for $R_p$, $R_\star$, and CO.
+These models were not trained with noise, so the noisy-test values are a lower bound.
+For PSN$\rightarrow$pRT the code biases are nearly unchanged at 10\,ppm: $T$ goes from $+39$ to $+38\,\mathrm{K}$, CO from $+0.29$ to $+0.26\,\mathrm{dex}$, and $R_p$ from $-0.078$ to $-0.070\,R_{\mathrm J}$.
+Where the noise-induced shift has the same sign as the code bias, the two add: for pRT$\rightarrow$PSN, $\beta_T$ grows from $-45$ to $-63\,\mathrm{K}$.
+The scatter, by contrast, grows: the self-retrieval half-width $w_T$ rises from $27$ to about $86\,\mathrm{K}$ at 10\,ppm and $305\,\mathrm{K}$ at 50\,ppm.
+The median ratio $|\beta|/w$ over all cross pairs and parameters therefore falls from $0.10$ without noise to $0.08$ at 50\,ppm.
+The largest ratios are for $T$: up to $0.72$ without noise and $0.39$ at 50\,ppm.
+For an individual planet observed at $\gtrsim30\,\mathrm{ppm}$ precision, the code systematic is a minor term in the error budget.
+For a population analysis, where the scatter averages down as $1/\sqrt{N}$ but the bias does not, it remains a coherent shift~\cite{TODO_population_level_retrieval_biases}.
+
+% ---------------------------------------------------------------------
+\subsection{Computational cost}
+\label{sec:res_cost}
+
+Table~\ref{tab:cost} summarises model size, training cost, and the best realisable detection AUC at $\sigma=20\,\mathrm{ppm}$.
+Within the autoencoder family, AE-W costs $3.2\times$ the parameters and multiply--accumulate operations of AE-S, and $1.7\times$ the training time per 1000 epochs (1123 versus 651\,s).
+It lowers the test MSE by $1.7\times$ (Table~\ref{tab:recon}).
+Inference costs about $1.1\times10^{5}$ multiply--accumulate operations per spectrum, which is negligible for any survey-sized sample [TODO: VERIFY measured inference throughput].
+Across model families, the random forest is both cheaper to train (66--70\,s per noise level with four threads, against about $10^3$\,s per autoencoder with one thread) and more accurate at every $\sigma>0$.
+For detecting code systematics, the additional cost of the one-class autoencoders brings no benefit.
+Their value in this study lies in characterising reconstruction difficulty across parameter space (Section~\ref{sec:res_q2}), not in detection.
+
+\begin{table}[t]
+  \centering
+  \caption{Cost and detection performance. Times are wall-clock on CPU [TODO: VERIFY processor]. AUC: mean over code pairs at $\sigma=20$\,ppm. For XGBoost, the time per regressor includes four learning-curve refits. Bold: best; underline: second best.}
+  \label{tab:cost}
+  \begin{tabular}{lllr}
+    \toprule
+    Model & Size & Training (threads) & AUC$_{20}$ \\
+    \midrule
+    AE-W ($\times3$ codes)          & 114{,}972 params  & 920--1069\,s (1)              & \underline{0.669} \\
+    Denoising AE-W ($\times3$)      & 114{,}972 params  & 217--954\,s (1)               & 0.630 \\
+    Random forest                   & 300 trees         & 66--70\,s per $\sigma$ (4)    & \textbf{0.886} \\
+    XGBoost ($\times27$, retrieval) & $\leq3000$ trees, depth 8 & 80\,s mean (4)        & -- \\
+    \bottomrule
+  \end{tabular}
+\end{table}
