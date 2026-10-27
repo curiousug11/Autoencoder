@@ -32,6 +32,7 @@ This agrees with the forward model of Eq.~\eqref{eq:forward}: transit depth depe
   \centering
   \caption{Reconstruction of POSEIDON spectra by linear and nonlinear compressors with an 8-dimensional code (PCA is also shown with $k=16$). Errors are MSE in standardised units ($\times10^{-4}$). Autoencoder rows are means over the two seeds shared by all four configurations (42, 43); the test column also gives the seed standard deviation. With a third seed, AE-W\,/\,cosine gives $0.80\pm0.26$. Bold: best; underline: second best. PCA parameters count the basis vectors and the mean; MACs count encoding plus decoding.}
   \label{tab:recon}
+  \resizebox{\textwidth}{!}{%
   \begin{tabular}{llrrrrrrr}
     \toprule
     Model & Schedule\,/\,$P_{\mathrm{es}}$ & Params & MACs & Time (s) & Val & Test & Median & $P_{95}$ \\
@@ -44,7 +45,8 @@ This agrees with the forward model of Eq.~\eqref{eq:forward}: transit depth depe
     AE-W        & plateau\,/\,20   & 114{,}972 & 113{,}920 & 662   & $2.10$              & $2.22\pm1.44$                       & $0.64$              & $7.51$ \\
     AE-W        & cosine\,/\,50    & 114{,}972 & 113{,}920 & 1123  & $\mathbf{0.58}$     & $\mathbf{0.66\pm0.08}$              & $\mathbf{0.20}$     & $\mathbf{1.85}$ \\
     \bottomrule
-  \end{tabular}
+  \end{tabular}%
+  }
 \end{table*}
 
 \paragraph{Ablation: width and schedule.}
@@ -145,6 +147,7 @@ Table~\ref{tab:resid} summarises the paired decomposition of Eq.~\eqref{eq:offse
   \centering
   \caption{Paired inter-code residuals on noise-free spectra. $\delta$: wavelength-mean offset; $\rho$: root-mean-square shape residual after offset removal (Eq.~\ref{eq:rho}); $\rho/\bar h$: median relative residual. $n_{90}$, $n_{99}$: number of principal components of the relative residual needed for 90\% and 99\% of its variance. $R^2_{1\text{--}4}$: out-of-sample $R^2$ of the first four component scores regressed on $\bm{\theta}$, for relative and absolute residuals.}
   \label{tab:resid}
+  \resizebox{\textwidth}{!}{%
   \begin{tabular}{lrrrrrcl}
     \toprule
     Pair $(a-b)$ & $\delta$ median [$P_{16}$, $P_{84}$] (ppm) & $\rho$ median (ppm) & $\rho$ $P_{90}$ (ppm) & $\rho/\bar h$ & $n_{90}/n_{99}$ & $R^2_{1\text{--}4}$ (relative) & $R^2_{1\text{--}4}$ (absolute) \\
@@ -153,7 +156,8 @@ Table~\ref{tab:resid} summarises the paired decomposition of Eq.~\eqref{eq:offse
     PSN $-$ TRX & $-20.8$ [$-85.8$, $-7.8$]  & 10.0 & 75.0 & 1.3\% & 7/24 & 0.98, 0.94, 0.96, 0.95 & 0.28--0.65 \\
     pRT $-$ TRX & $+2.1$ [$-1.1$, $+20.7$]   & 8.3  & 74.8 & 1.0\% & 6/21 & 0.99, 0.96, 0.94, 0.96 & 0.10--0.54 \\
     \bottomrule
-  \end{tabular}
+  \end{tabular}%
+  }
 \end{table*}
 
 \paragraph{Offsets.}
@@ -370,6 +374,7 @@ The worst single cross-retrieval is $R_p$ from TauREx spectra with a POSEIDON-tr
   \centering
   \caption{XGBoost retrieval $R^2$ on test planets. Self: mean over the three codes ($b=a$). Cross: mean over the six pairs ($b\neq a$). Gap: self minus cross. Models are trained without noise; the noisy rows apply the same models to test spectra with white noise. In the gap rows, bold marks the largest and underline the second-largest self--cross gap.}
   \label{tab:retr}
+  \resizebox{\textwidth}{!}{%
   \begin{tabular}{llrrrrrrrrr}
     \toprule
     $\sigma$ & & $T$ & $\log X_{\mathrm{CO_2}}$ & $\log X_{\mathrm{CH_4}}$ & $\log X_{\mathrm{H_2O}}$ & $M_p$ & $\log X_{\mathrm{NH_3}}$ & $\log X_{\mathrm{CO}}$ & $R_\star$ & $R_p$ \\
@@ -385,7 +390,8 @@ The worst single cross-retrieval is $R_p$ from TauREx spectra with a POSEIDON-tr
     50\,ppm & Self  & 0.678 & 0.769 & 0.680 & 0.541 & 0.608 & 0.296 & $-0.459$ & $-0.010$ & $-0.572$ \\
             & Cross & 0.659 & 0.764 & 0.674 & 0.538 & 0.600 & 0.291 & $-0.533$ & $-0.015$ & $-0.598$ \\
     \bottomrule
-  \end{tabular}
+  \end{tabular}%
+  }
 \end{table*}
 
 \paragraph{Bias structure.}
