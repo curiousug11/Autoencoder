@@ -1,0 +1,84 @@
+% =====================================================================
+% Stage 5: Title options, Abstract, Limitations, Conclusion
+% =====================================================================
+
+% ---------------------------------------------------------------------
+% TITLE OPTIONS (choose one)
+% 1. Same Planet, Three Codes: Inter-Code Systematics in Exoplanet
+%    Transmission Spectra and Their Effect on Machine-Learning Retrievals
+% 2. How Much Does the Forward Model Matter? A Paired Comparison of
+%    POSEIDON, petitRADTRANS, and TauREx over 98,725 Simulated Planets
+% 3. Forward-Model Mismatch as Simulator Misspecification: Detectability
+%    and Retrieval Bias across Three Radiative-Transfer Codes
+% 4. Detecting and Quantifying Radiative-Transfer Code Systematics in
+%    Ariel-Like Transmission Spectra
+% 5. Low-Dimensional, Deterministic, and Persistent: Inter-Code
+%    Systematics in Simulated Exoplanet Transmission Spectra
+% ---------------------------------------------------------------------
+
+\begin{abstract}
+Interpreting exoplanet transmission spectra requires a radiative-transfer forward model, and machine-learning retrievals inherit the one used to build their training set.
+We quantify how much this choice matters with a paired experiment.
+We compute $98{,}725$ isothermal, cloud-free spectra with each of POSEIDON, petitRADTRANS, and TauREx from identical parameters, binned onto a common 52-bin Ariel grid ($0.55$--$7.28\,\mu$m).
+Among the $43{,}885$ planets with features of at least $210\,\mathrm{ppm}$, POSEIDON spectra are $21$--$24\,\mathrm{ppm}$ shallower in the median than those of the other two codes.
+After removing this offset, the codes differ by a median of $8$--$10\,\mathrm{ppm}$ ($1.0$--$1.3\%$ of the feature height).
+The four leading principal components of these differences are predicted from the planet parameters with out-of-sample $R^2\geq0.94$.
+One-class autoencoders trained on a single code identify spectra from another code with $\mathrm{AUC}=0.962$--$0.992$ without noise.
+At $10\,\mathrm{ppm}$ of white noise per bin, the AUC falls to $0.628$, or $0.735$ with an error-weighted $\chi^2$ score.
+At a calibrated 1\% false-positive rate the autoencoders detect $4.1\%$ of other-code spectra between 10 and $50\,\mathrm{ppm}$, against $36$--$81\%$ for an oracle that knows the true parameters.
+A supervised random forest reaches a pairwise AUC of $0.945$ at $10\,\mathrm{ppm}$ ($+0.210$ over the best autoencoder score) and $0.775$ at $50\,\mathrm{ppm}$ ($+0.179$).
+Applying gradient-boosted retrievals trained on one code to spectra from another lowers $R^2$ by $0.224$ for the CO abundance and $0.172$ for the planet radius.
+It also biases the temperature by up to $45\,\mathrm{K}$ in the median and by $-330\,\mathrm{K}$ for the hottest 5\% of planets.
+Increasing the training set twenty-fold doubles the self/cross gap for CO, from $0.106$ to $0.224$.
+Under noise these biases persist while the scatter grows, so they matter little for individual planets observed at $\gtrsim30\,\mathrm{ppm}$ precision but remain a coherent shift for population studies.
+\end{abstract}
+
+% =====================================================================
+\section{Limitations}
+\label{sec:limitations}
+
+\paragraph{Simplified atmospheres.}
+All spectra assume an isothermal, cloud-free atmosphere, and the codes use their default opacity databases.
+Clouds, hazes, non-isothermal profiles, and disequilibrium chemistry would introduce further modelling choices on which the codes may disagree.
+Inter-code differences for realistic atmospheres may therefore be larger than those reported here.
+The CH$_4$ and NH$_3$ abundances are restricted above 2000\,K and 1600\,K because opacity data are unavailable there, which leaves part of the hot regime sparsely covered for those species [TODO: VERIFY thresholds].
+
+\paragraph{Confounded sources of disagreement.}
+The three codes differ in opacity data, in opacity treatment (correlated-$k$ at $R=1000$ for petitRADTRANS, cross-sections at $R=15{,}000$ for the other two), and in internal conventions.
+Our paired design measures their combined effect.
+It does not attribute a residual to a single cause, and the physical interpretations in Section~\ref{sec:res_q1} are hypotheses that require controlled re-simulation to test.
+
+\paragraph{Noise model.}
+Observational noise is white, Gaussian, and uniform across bins.
+Real Ariel and JWST errors vary with wavelength and include correlated instrumental and stellar systematics, which can either mask or mimic inter-code differences.
+
+\paragraph{Sample selection.}
+The $210\,\mathrm{ppm}$ feature-height cut retains $44.6\%$ of planets and preferentially removes cool planets (18.6\% retained below 600\,K, 55.1\% above 2000\,K).
+Population-level statistics therefore describe large-feature planets, and the hardest planets for the autoencoders are under-represented in training.
+
+\paragraph{Model and statistical scope.}
+Retrievals are point estimates from gradient-boosted trees trained without noise, not Bayesian posteriors.
+Most of these regressors reached the cap of 3000 boosting rounds, so they are not fully converged.
+The random-forest classifier fits its training set perfectly.
+Results use a single train/validation/test split, two to three initialisation seeds per autoencoder configuration, and one seed for the TauREx detector.
+The width--schedule ablation varies the learning-rate schedule and the early-stopping patience jointly.
+Ten of the twelve denoising models stopped early, so the negative result for the denoising objective may partly reflect the stopping rule rather than the objective.
+
+% =====================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+
+We measured the systematic differences between three widely used radiative-transfer codes on a paired sample of $98{,}725$ simulated planets, and traced their consequences for detection and for machine-learning retrieval.
+The differences consist of a depth offset of about $20\,\mathrm{ppm}$ between POSEIDON and the other two codes, which scales with feature height, and a shape residual of about $1\%$ of the feature height.
+The shape residual is concentrated in a few spectral regions and is a near-deterministic function of the planet parameters.
+Without noise these differences are easily detected, even when they are only a few ppm.
+At realistic noise levels they become difficult to detect from a single spectrum, and the difficulty is set by the detector: one-class autoencoders are limited by their own worst-case reconstruction errors, whereas a classifier trained on all three codes approaches or exceeds a parameter-aware oracle.
+In retrieval, code mismatch produces parameter-dependent biases that additional training data from a single code do not remove.
+For individual noisy spectra these biases are small compared with the statistical scatter, but for population studies they persist as coherent shifts.
+
+These results suggest four practices.
+First, ML retrievals should be validated on spectra from forward models other than the one used for training, and should report the resulting self/cross gap.
+Second, because the residuals are low-dimensional and predictable from the parameters, they could be emulated and either corrected or included as a modelled error term; we have not tested this here.
+Third, code identification should use discriminative models trained on all candidate codes rather than one-class reconstruction scores.
+Fourth, reconstruction-based detectors should be evaluated at a calibrated false-positive rate, because their AUC can greatly overstate their usable detection rate.
+Extending the paired design to cloudy, non-isothermal atmospheres, shared opacity sources, and instrument-specific noise would separate the physical origins of the systematics and test whether these conclusions hold for real observations.
