@@ -1,0 +1,412 @@
+% =====================================================================
+% Stage 2: Methodology and Experimental Setup
+% Required packages: amsmath, amssymb, bm, booktabs, siunitx, graphicx
+% Notation: codes a, b, c in \mathcal{C} = {PSN, pRT, TRX}
+%   PSN = POSEIDON, pRT = petitRADTRANS, TRX = TauREx
+% =====================================================================
+
+\section{Methodology}
+\label{sec:method}
+
+\subsection{Problem definition}
+\label{sec:problem}
+
+Let $\bm{\theta}\in\Theta\subset\mathbb{R}^{9}$ denote the parameters of a transiting planet,
+\begin{equation}
+  \bm{\theta} = \bigl(R_\star,\; R_p,\; M_p,\; T,\; \log_{10}X_{\mathrm{H_2O}},\; \log_{10}X_{\mathrm{CH_4}},\; \log_{10}X_{\mathrm{CO}},\; \log_{10}X_{\mathrm{CO_2}},\; \log_{10}X_{\mathrm{NH_3}}\bigr),
+  \label{eq:theta}
+\end{equation}
+where $R_\star$ is the stellar radius, $R_p$ and $M_p$ are the planetary radius and mass, $T$ is the temperature of an isothermal atmosphere, and $X_s$ is the volume mixing ratio of species $s$.
+A radiative-transfer code $c$ defines a forward model
+\begin{equation}
+  \mathcal{F}^{(c)}:\Theta\rightarrow\mathbb{R}^{D},\qquad \mathbf{y}^{(c)} = \mathcal{F}^{(c)}(\bm{\theta}),
+  \label{eq:forward}
+\end{equation}
+which maps $\bm{\theta}$ to a transmission spectrum of fractional transit depths in $D=52$ wavelength bins.
+We consider three codes, $c\in\mathcal{C}=\{\mathrm{PSN},\mathrm{pRT},\mathrm{TRX}\}$, for POSEIDON~\cite{TODO_macdonald_poseidon}, petitRADTRANS~\cite{TODO_molliere_petitradtrans}, and TauREx~\cite{TODO_alrefaie_taurex3}.
+For a pair of codes $(a,b)$ and the same $\bm{\theta}$, the inter-code systematic is the difference spectrum
+\begin{equation}
+  \bm{\Delta}^{(ab)}(\bm{\theta}) = \mathcal{F}^{(a)}(\bm{\theta}) - \mathcal{F}^{(b)}(\bm{\theta}) \in \mathbb{R}^{D}.
+  \label{eq:delta}
+\end{equation}
+In a physically consistent setting with identical inputs, $\bm{\Delta}^{(ab)}\equiv\mathbf{0}$.
+We address three questions:
+\begin{enumerate}
+  \item[(Q1)] \emph{Structure.} What are the amplitude, spectral shape, and parameter dependence of $\bm{\Delta}^{(ab)}$?
+  \item[(Q2)] \emph{Detectability.} Given a single spectrum, possibly corrupted by observational noise, can one determine which code produced it?
+  \item[(Q3)] \emph{Impact on inference.} How much bias does a data-driven retrieval model trained on code $a$ incur when it is applied to spectra from code $b\neq a$?
+\end{enumerate}
+We treat (Q1) with a paired residual decomposition (Section~\ref{sec:residuals}), (Q2) with one-class autoencoders and a supervised classifier (Sections~\ref{sec:ae}--\ref{sec:rf}), and (Q3) with gradient-boosted regression (Section~\ref{sec:retrieval}).
+
+\subsection{Simulated spectra}
+\label{sec:data}
+
+\paragraph{Parameter sampling.}
+We draw $N=98{,}725$ parameter vectors [TODO: VERIFY whether 98,725 is the full sample or the sample remaining after a cleaning step, and what that step removed].
+In the stored sample, $R_\star$, $R_p$, $M_p$, and $T$ are approximately uniform on $[0.5,2.0]\,R_\odot$, $[0.1,2.0]\,R_\mathrm{J}$, $[0.01,5.0]\,M_\mathrm{J}$ [TODO: VERIFY lower bound of $M_p$; the lowest-mass decile is under-populated by $\approx$12\%], and $[300,3000]\,\mathrm{K}$, and the five log-abundances are uniform on $[-9,-3]$.
+Two abundances are restricted where opacity data are unavailable at high temperature: $\log_{10}X_{\mathrm{CH_4}}\in[-9,-7]$ for $T>2000\,\mathrm{K}$ and $\log_{10}X_{\mathrm{NH_3}}\in[-9,-7]$ for $T>1600\,\mathrm{K}$ [TODO: VERIFY; author notes give 1500\,K, but the stored parameters show the cut-offs at 2000\,K for CH$_4$ and 1600\,K for NH$_3$].
+This restriction induces negative correlations between $T$ and the two log-abundances (Pearson $r=-0.47$ for CH$_4$ and $-0.53$ for NH$_3$) and a positive correlation between the two abundances themselves ($r=0.26$); all other parameter pairs are uncorrelated ($|r|<0.02$).
+
+\paragraph{Forward models.}
+All three codes use an isothermal pressure--temperature profile at $T$, a cloud-free atmosphere, and each code's default opacity database [TODO: VERIFY line lists, collision-induced absorption, Rayleigh scattering, background gas composition, and reference pressure for each code].
+POSEIDON and TauREx compute spectra from cross-sections at a native resolving power of $R=15{,}000$; petitRADTRANS uses correlated-$k$ opacities at $R=1000$.
+Each native spectrum is binned onto a common grid of $D=52$ bins that follows the Ariel spectral coverage~\cite{TODO_tinetti_ariel_mission} [TODO: VERIFY Ariel tier and binning reference].
+Bin centres span $0.55$--$7.28\,\mu\mathrm{m}$: three photometric bins (0.55, 0.70, 0.95\,$\mu$m), followed by three spectroscopic segments with approximately constant $\lambda/\Delta\lambda\approx 11$ ($1.16$--$1.88\,\mu$m, 6 bins), $\approx 51$ ($1.97$--$3.72\,\mu$m, 33 bins), and $\approx 16$ ($4.03$--$7.28\,\mu$m, 10 bins).
+Because the three codes share $\bm{\theta}$ row by row, every planet $i$ has a triplet $\bigl(\mathbf{y}_i^{(\mathrm{PSN})},\mathbf{y}_i^{(\mathrm{pRT})},\mathbf{y}_i^{(\mathrm{TRX})}\bigr)$, so the effect of the code can be isolated from that of the planet.
+
+\paragraph{Feature-height selection.}
+We define the feature height of a spectrum as
+\begin{equation}
+  h(\mathbf{y}) = \max_{j} y_j - \min_{j} y_j ,
+  \label{eq:fh}
+\end{equation}
+and retain planet $i$ only if $h(\mathbf{y}_i^{(c)})\geq h_{\min}=210\,\mathrm{ppm}$ for every code under consideration [TODO: VERIFY physical justification for 210\,ppm].
+The median feature height of the unselected sample is 153--156\,ppm, depending on the code, so the selection retains 44.6\% of planets.
+
+\paragraph{Per-spectrum normalisation.}
+For $\mathbf{y}\in\mathbb{R}^{D}$ we define the bin-averaged depth and the population standard deviation
+\begin{equation}
+  m(\mathbf{y}) = \frac{1}{D}\sum_{j=1}^{D} y_j,\qquad
+  s(\mathbf{y}) = \Bigl(\frac{1}{D}\sum_{j=1}^{D}\bigl(y_j-m(\mathbf{y})\bigr)^2\Bigr)^{1/2},
+  \label{eq:ms}
+\end{equation}
+and the standardised spectrum $\tilde{\mathbf{y}} = \bigl(\mathbf{y}-m(\mathbf{y})\mathbf{1}\bigr)/s(\mathbf{y})$.
+Standardisation removes the absolute depth, which encodes $(R_p/R_\star)^2$, and the overall feature amplitude.
+Models that operate on $\tilde{\mathbf{y}}$ are therefore sensitive only to spectral shape; where absolute depth is required (Section~\ref{sec:retrieval}), $m$ and $s$ are supplied as separate inputs.
+
+\paragraph{Noise model.}
+Observational noise is modelled as white Gaussian noise with a uniform standard deviation $\sigma$ in every bin,
+\begin{equation}
+  \mathbf{y}^{\sigma} = \mathbf{y} + \bm{\epsilon},\qquad \bm{\epsilon}\sim\mathcal{N}\bigl(\mathbf{0},\sigma^{2}\mathbf{I}_{D}\bigr),
+  \label{eq:noise}
+\end{equation}
+added to the transit-depth spectrum before standardisation, so that $\tilde{\mathbf{y}}^{\sigma}$ is computed with $m(\mathbf{y}^{\sigma})$ and $s(\mathbf{y}^{\sigma})$.
+
+\subsection{Paired residual decomposition (Q1)}
+\label{sec:residuals}
+
+For each planet $i$ and code pair $(a,b)$ we split $\bm{\Delta}_i^{(ab)}$ (Eq.~\ref{eq:delta}) into a wavelength-independent offset and a shape residual,
+\begin{equation}
+  \delta_i^{(ab)} = \frac{1}{D}\mathbf{1}^{\top}\bm{\Delta}_i^{(ab)},\qquad
+  \mathbf{r}_i^{(ab)} = \bm{\Delta}_i^{(ab)} - \delta_i^{(ab)}\mathbf{1}.
+  \label{eq:offset}
+\end{equation}
+The offset is degenerate with $R_p$ in a retrieval and is reported separately.
+We summarise the shape residual by its root-mean-square amplitude,
+\begin{equation}
+  \rho_i^{(ab)} = \frac{\lVert\mathbf{r}_i^{(ab)}\rVert_2}{\sqrt{D}},
+  \label{eq:rho}
+\end{equation}
+which is also the noise-free signal available to any detector that operates on mean-subtracted spectra.
+To compare planets with different feature amplitudes we also form the relative residual $\mathbf{q}_i^{(ab)} = \mathbf{r}_i^{(ab)}/\bar{h}_i^{(ab)}$, with $\bar{h}_i^{(ab)} = \tfrac{1}{2}\bigl[h(\mathbf{y}_i^{(a)})+h(\mathbf{y}_i^{(b)})\bigr]$.
+
+\paragraph{Principal components of the residuals.}
+For each pair we stack the residuals into $\mathbf{Q}^{(ab)}\in\mathbb{R}^{N'\times D}$ (and analogously the absolute residuals), centre the columns, and compute the singular value decomposition $\mathbf{Q}^{(ab)}-\mathbf{1}\bar{\mathbf{q}}^{\top}=\mathbf{U}\mathbf{S}\mathbf{V}^{\top}$.
+The rows $\mathbf{v}_k^{\top}$ of $\mathbf{V}^{\top}$ give the spectral shapes of the dominant inter-code differences, each signed so that its largest-magnitude loading is positive.
+The scores $u_{ik}=(\mathbf{q}_i-\bar{\mathbf{q}})^{\top}\mathbf{v}_k$ give their per-planet amplitudes, and the explained-variance ratios are $S_{kk}^{2}/\sum_{k'}S_{k'k'}^{2}$.
+
+\paragraph{Parameter dependence.}
+We quantify how deterministically each component depends on the planet parameters by regressing its score on $\bm{\theta}$ with a random-forest regressor $\mathcal{R}_k:\Theta\rightarrow\mathbb{R}$ and reporting the out-of-sample coefficient of determination
+\begin{equation}
+  R^{2}_k = 1-\frac{\sum_{i\in\mathcal{H}}\bigl(u_{ik}-\mathcal{R}_k(\bm{\theta}_i)\bigr)^{2}}{\sum_{i\in\mathcal{H}}\bigl(u_{ik}-\bar{u}_k\bigr)^{2}},
+  \label{eq:r2}
+\end{equation}
+on a held-out subset $\mathcal{H}$.
+A value $R^2_k\rightarrow1$ indicates that component $k$ is a deterministic function of $\bm{\theta}$ and could, in principle, be emulated and corrected.
+We additionally report Spearman rank correlations between the scores, the offset, and the parameters together with two derived quantities: the surface gravity proxy $\log_{10}g=\log_{10}(M_p/R_p^{2})$ in Jovian units, and $\log_{10}(T R_p/M_p)$, which is proportional to $\log_{10}(H/R_p)$ at fixed mean molecular weight, where $H$ is the atmospheric scale height.
+
+\subsection{One-class detection with autoencoders (Q2)}
+\label{sec:ae}
+
+\paragraph{Architecture.}
+For each code $c$ we train a fully connected autoencoder $f_c = g_{\bm{\psi}}\circ e_{\bm{\phi}}$ on standardised spectra from that code only.
+Let $(d_1,\dots,d_K)$ be the hidden widths and $L$ the latent dimension.
+With $\mathbf{a}_0=\tilde{\mathbf{y}}$, the encoder computes
+\begin{align}
+  \mathbf{a}_{\ell} &= \varphi\bigl(\mathbf{W}_{\ell}\mathbf{a}_{\ell-1}+\mathbf{b}_{\ell}\bigr),\qquad \ell=1,\dots,K, \label{eq:enc}\\
+  \mathbf{z} &= \mathbf{W}_{K+1}\mathbf{a}_{K}+\mathbf{b}_{K+1}\in\mathbb{R}^{L}, \label{eq:latent}
+\end{align}
+with $\mathbf{W}_{\ell}\in\mathbb{R}^{d_{\ell}\times d_{\ell-1}}$, $d_0=D$, and $d_{K+1}=L$.
+The decoder mirrors the encoder: with $\mathbf{a}'_0=\mathbf{z}$ and widths $(d_K,\dots,d_1)$,
+\begin{align}
+  \mathbf{a}'_{\ell} &= \varphi\bigl(\mathbf{W}'_{\ell}\mathbf{a}'_{\ell-1}+\mathbf{b}'_{\ell}\bigr),\qquad \ell=1,\dots,K, \label{eq:dec}\\
+  \hat{\tilde{\mathbf{y}}} &= \mathbf{W}'_{K+1}\mathbf{a}'_{K}+\mathbf{b}'_{K+1}\in\mathbb{R}^{D}. \label{eq:out}
+\end{align}
+The latent and output layers are linear because standardised spectra are unbounded.
+The encoder and decoder do not share weights, and the network has no normalisation, dropout, or skip connections.
+Unless stated otherwise, $\varphi$ is the Gaussian error linear unit $\varphi(x)=x\,\Phi(x)$~\cite{TODO_hendrycks_gelu}, with $\Phi$ the standard normal cumulative distribution function.
+We use two widths:
+\begin{equation}
+  \text{AE-S: } (d_1,\dots,d_4)=(128,64,32,16),\qquad
+  \text{AE-W: } (d_1,\dots,d_5)=(256,128,64,32,16),
+  \label{eq:widths}
+\end{equation}
+both with $L=8$.
+The number of trainable parameters is
+\begin{equation}
+  P = 2\sum_{\ell=1}^{K+1}d_{\ell-1}d_{\ell} + \sum_{\ell=1}^{K+1}d_{\ell} + \sum_{\ell=0}^{K}d_{\ell},
+  \label{eq:params}
+\end{equation}
+which gives $P=35{,}612$ for AE-S and $P=114{,}972$ for AE-W (Table~\ref{tab:arch}).
+AE-W adds one 256-unit layer at each end of AE-S and has $3.2\times$ as many parameters.
+
+\begin{table}[t]
+  \centering
+  \caption{Autoencoder variants. All variants are symmetric, use linear latent and output layers, and differ only in the hidden widths, the latent dimension $L$, and the activation $\varphi$. MACs: multiply--accumulate operations per forward pass.}
+  \label{tab:arch}
+  \begin{tabular}{lllrr}
+    \toprule
+    Variant & Encoder widths & $L$ & Parameters & MACs \\
+    \midrule
+    AE-S          & $52\!\rightarrow\!128\!\rightarrow\!64\!\rightarrow\!32\!\rightarrow\!16$                  & 8      & 35{,}612  & 35{,}072 \\
+    AE-S$(L)$     & as AE-S                                                                                    & 4--16  & $35{,}348+33L$ & -- \\
+    AE-W          & $52\!\rightarrow\!256\!\rightarrow\!128\!\rightarrow\!64\!\rightarrow\!32\!\rightarrow\!16$ & 8      & 114{,}972 & 113{,}920 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Reconstruction objective.}
+Given a mini-batch $\mathcal{B}$, the autoencoder minimises the mean squared reconstruction error in standardised units,
+\begin{equation}
+  \mathcal{L}_{\mathrm{rec}}(\bm{\phi},\bm{\psi}) = \frac{1}{|\mathcal{B}|\,D}\sum_{i\in\mathcal{B}}\bigl\lVert\tilde{\mathbf{y}}_i - f_c(\tilde{\mathbf{y}}_i)\bigr\rVert_2^{2}.
+  \label{eq:lrec}
+\end{equation}
+Parameters $\bm{\omega}=(\bm{\phi},\bm{\psi})$ are updated with AdamW~\cite{TODO_loshchilov_adamw}, which applies decoupled weight decay $\lambda$,
+\begin{equation}
+  \bm{\omega}_{t+1} = (1-\eta_t\lambda)\,\bm{\omega}_t - \eta_t\,\frac{\hat{\mathbf{m}}_t}{\sqrt{\hat{\mathbf{v}}_t}+\epsilon},
+  \label{eq:adamw}
+\end{equation}
+where $\hat{\mathbf{m}}_t$ and $\hat{\mathbf{v}}_t$ are the bias-corrected first and second moment estimates of $\nabla_{\bm{\omega}}\mathcal{L}_{\mathrm{rec}}$.
+
+\paragraph{Denoising objective.}
+To test whether robustness to noise can be learned, we also train denoising autoencoders~\cite{TODO_vincent_denoising_ae} with the AE-W architecture.
+The input is the standardised noisy spectrum.
+The target is the clean spectrum scaled by the \emph{noisy} spectrum's statistics, so that the output can be mapped back to transit depth from observable quantities only:
+\begin{equation}
+  \mathcal{L}_{\mathrm{den}} = \frac{1}{|\mathcal{B}|\,D}\sum_{i\in\mathcal{B}}\Bigl\lVert \frac{\mathbf{y}_i - m(\mathbf{y}_i^{\sigma})\mathbf{1}}{s(\mathbf{y}_i^{\sigma})} - f_c\bigl(\tilde{\mathbf{y}}_i^{\sigma}\bigr)\Bigr\rVert_2^{2}.
+  \label{eq:lden}
+\end{equation}
+A new noise realisation $\bm{\epsilon}$ is drawn for every training mini-batch.
+
+\paragraph{Anomaly scores.}
+An autoencoder trained on code $c$ assigns a spectrum $\mathbf{y}$ the reconstruction score
+\begin{equation}
+  e_c(\mathbf{y}) = \frac{1}{D}\bigl\lVert\tilde{\mathbf{y}} - f_c(\tilde{\mathbf{y}})\bigr\rVert_2^{2}.
+  \label{eq:score}
+\end{equation}
+Spectra from code $c$ are treated as nominal and spectra from $b\neq c$ as anomalous.
+Decision thresholds $\tau_c^{(q)}$ are the $q$-th percentiles, $q\in\{95,99\}$, of $e_c$ on the nominal validation spectra, so no anomalous data are used to set them.
+
+For noisy spectra with known per-bin uncertainty $\sigma$, $e_c$ conflates reconstruction error with noise.
+We therefore also map the reconstruction back to transit depth and score it against the error bars:
+\begin{equation}
+  \hat{\mathbf{y}} = s(\mathbf{y}^{\sigma})\,f_c\bigl(\tilde{\mathbf{y}}^{\sigma}\bigr) + m(\mathbf{y}^{\sigma})\mathbf{1},\qquad
+  \chi^{2}_{\nu,c}(\mathbf{y}^{\sigma}) = \frac{1}{D}\sum_{j=1}^{D}\Bigl(\frac{y^{\sigma}_j-\hat{y}_j}{\sigma}\Bigr)^{2}.
+  \label{eq:chi2}
+\end{equation}
+We compare two thresholds at a target false-positive rate $\alpha$.
+The first is the theoretical threshold $\tau^{\mathrm{th}} = F^{-1}_{\chi^{2}_{D}}(1-\alpha)/D$, where $F_{\chi^{2}_{D}}$ is the $\chi^{2}$ cumulative distribution function with $D$ degrees of freedom.
+The second is an empirical threshold $\tau^{\mathrm{emp}}_c$, defined as the $(1-\alpha)$ quantile of $\chi^{2}_{\nu,c}$ on noisy nominal validation spectra, which absorbs the autoencoder's own reconstruction error.
+
+\paragraph{Oracle reference.}
+To separate the limits imposed by the data from those of the model, we define an oracle that scores a noisy spectrum against the true noise-free spectrum of code $c$ for the same planet:
+\begin{equation}
+  \chi^{2}_{\nu,c}{}^{\star}(\mathbf{y}_i^{\sigma}) = \frac{1}{D}\sum_{j=1}^{D}\Bigl(\frac{y^{\sigma}_{ij}-y^{(c)}_{ij}}{\sigma}\Bigr)^{2}.
+  \label{eq:oracle}
+\end{equation}
+The oracle requires the true $\bm{\theta}_i$ and is not realisable in practice.
+It bounds the performance of any single-spectrum goodness-of-fit test against code $c$.
+
+\subsection{Supervised code classification (Q2)}
+\label{sec:rf}
+
+As a discriminative counterpart to the one-class detectors, we train a three-class random forest~\cite{TODO_breiman_random_forests} $\mathcal{G}:\mathbb{R}^{D}\rightarrow\Delta^{2}$ that maps a standardised (noisy) spectrum to class probabilities $\mathbf{p}=(p_{\mathrm{PSN}},p_{\mathrm{pRT}},p_{\mathrm{TRX}})$ over the three codes.
+Each training planet contributes one spectrum per code, so the classifier sees every planet under every label and must rely on code-specific differences rather than planet properties.
+To compare with the one-class detectors, for a pair $(a,b)$ we score test spectra of codes $a$ and $b$ with
+\begin{equation}
+  \pi_{ab}(\mathbf{y}) = \frac{p_b(\mathbf{y})}{p_a(\mathbf{y})+p_b(\mathbf{y})},
+  \label{eq:pairscore}
+\end{equation}
+which plays the role of an anomaly score for nominal code $a$.
+
+\subsection{Self- and cross-code retrieval (Q3)}
+\label{sec:retrieval}
+
+We emulate a data-driven retrieval with gradient-boosted regression trees~\cite{TODO_chen_xgboost}.
+The input feature vector retains the absolute depth information removed by standardisation,
+\begin{equation}
+  \mathbf{x}(\mathbf{y}) = \bigl[\,\tilde{\mathbf{y}}^{\top},\ \log_{10}m(\mathbf{y}),\ \log_{10}s(\mathbf{y})\,\bigr]^{\top}\in\mathbb{R}^{D+2}.
+  \label{eq:xgbfeat}
+\end{equation}
+For each training code $a$ and each parameter $\theta_k$, $k=1,\dots,9$, we fit an independent regressor $\hat{\theta}^{(a)}_k=G^{(a)}_k\bigl(\mathbf{x}(\mathbf{y}^{(a)})\bigr)$, which gives 27 regressors in total.
+Each regressor is an additive ensemble of regression trees fitted by second-order boosting on the squared error.
+Every regressor is then applied to the test spectra of all three codes for the same planets.
+We call the case $b=a$ \emph{self-retrieval} and the case $b\neq a$ \emph{cross-retrieval}.
+Because the planets are identical, any difference between self- and cross-retrieval errors is caused solely by $\bm{\Delta}^{(ab)}$.
+
+For each triple $(a,b,k)$ with errors $\varepsilon_i=\hat{\theta}^{(a)}_{k}(\mathbf{y}_i^{(b)})-\theta_{ik}$ on the test set, we report the coefficient of determination $R^{2}$ (Eq.~\ref{eq:r2}), the median bias $\beta=\operatorname{median}_i\varepsilon_i$, and the half-width
+\begin{equation}
+  w = \tfrac{1}{2}\bigl[P_{84}(\varepsilon)-P_{16}(\varepsilon)\bigr],
+  \label{eq:halfwidth}
+\end{equation}
+where $P_q$ is the $q$-th percentile.
+We also report $\beta$ as a percentage of the parameter's range over the sample.
+The ratio $|\beta|/w$ measures how large the code-induced bias is relative to the single-planet scatter.
+
+\subsection{Diagnostics of reconstruction difficulty}
+\label{sec:diag}
+
+To identify which planets limit the autoencoders, we rank each code's held-out spectra by $e_c$ and label the top 5\% as poorly reconstructed.
+For every parameter and derived quantity $\xi$, we compute the probability that a poorly reconstructed planet has a larger value of $\xi$ than another planet,
+\begin{equation}
+  A_{\xi} = \Pr\bigl(\xi_i > \xi_{i'} \mid i\in\mathcal{P},\ i'\notin\mathcal{P}\bigr),
+  \label{eq:auc_param}
+\end{equation}
+where $\mathcal{P}$ is the poorly reconstructed set.
+$A_\xi=0.5$ indicates no association.
+We measure agreement across codes by the overlap of the sets $\mathcal{P}$ and by the Spearman correlation of per-planet scores.
+An analogous breakdown of classifier accuracy is computed in quantile bins of $\bm{\theta}$, $h$, and the mean pairwise residual amplitude $\bar{\rho}_i=\tfrac{1}{3}\sum_{(a,b)}\rho_i^{(ab)}$.
+
+% =====================================================================
+\section{Experimental Setup}
+\label{sec:setup}
+
+\subsection{Data partitions}
+\label{sec:splits}
+
+We use two planet sets.
+For the autoencoder design study (Section~\ref{sec:design}), the feature-height selection is applied to POSEIDON spectra only, which retains 44{,}026 planets.
+For every cross-code experiment, a planet must pass the selection in all three codes, which retains 43{,}885 planets.
+In both cases a single random permutation (seed 42) assigns 70\%/15\%/15\% of planets to training, validation, and test sets (30{,}818/6{,}604/6{,}604 and 30{,}719/6{,}583/6{,}583, respectively).
+In the cross-code set the partition is defined on planets, so a test planet is absent from training in every code.
+The validation set is used for early stopping, model selection, and threshold calibration.
+The test set is used only for the reported metrics.
+
+\subsection{Autoencoder training protocol}
+\label{sec:aetrain}
+
+Table~\ref{tab:hparams} lists the training hyperparameters.
+We train for at most 1000 epochs with mini-batches of 256 spectra and use one of two learning-rate schedules.
+The \emph{plateau} schedule halves $\eta$ when the validation loss has not improved for 7 epochs, with no lower bound on $\eta$.
+The \emph{cosine} schedule anneals $\eta$ once per epoch $t$ as
+\begin{equation}
+  \eta_t = \eta_{\min} + \tfrac{1}{2}\bigl(\eta_0-\eta_{\min}\bigr)\bigl(1+\cos(\pi t/E)\bigr),
+  \label{eq:cosine}
+\end{equation}
+with $\eta_0=10^{-3}$, $\eta_{\min}=10^{-6}$, and $E=1000$.
+Early stopping tracks a reference loss $\mathcal{L}^{\mathrm{ref}}$ and resets its counter when the validation loss satisfies $\mathcal{L}_{\mathrm{val}}<(1-\delta)\,\mathcal{L}^{\mathrm{ref}}$, with relative tolerance $\delta=10^{-3}$.
+Training stops after $P_{\mathrm{es}}$ consecutive epochs without such an improvement.
+We use $P_{\mathrm{es}}=20$ with the plateau schedule and $P_{\mathrm{es}}=50$ with the cosine schedule.
+The weights with the lowest validation loss are restored at the end of training.
+Weights and biases use the default initialisation, drawn from $\mathcal{U}\bigl(-d_{\ell-1}^{-1/2},\,d_{\ell-1}^{-1/2}\bigr)$.
+The initialisation seed also determines the mini-batch order.
+
+\begin{table}[t]
+  \centering
+  \caption{Autoencoder training hyperparameters. Values marked $\dagger$ are framework defaults.}
+  \label{tab:hparams}
+  \begin{tabular}{ll}
+    \toprule
+    Hyperparameter & Value \\
+    \midrule
+    Loss                          & $\mathcal{L}_{\mathrm{rec}}$ (Eq.~\ref{eq:lrec}) or $\mathcal{L}_{\mathrm{den}}$ (Eq.~\ref{eq:lden}) \\
+    Optimiser                     & AdamW, $\eta_0=10^{-3}$, $\lambda=10^{-5}$ \\
+    $(\beta_1,\beta_2,\epsilon)$  & $(0.9,\,0.999,\,10^{-8})^{\dagger}$ [TODO: VERIFY framework version] \\
+    Mini-batch size               & 256 \\
+    Maximum epochs                & 1000 \\
+    Plateau schedule              & factor 0.5, patience 7 epochs, no minimum $\eta$ \\
+    Cosine schedule               & $\eta_{\min}=10^{-6}$, $E=1000$ \\
+    Early stopping                & $\delta=10^{-3}$ (relative); $P_{\mathrm{es}}=20$ (plateau) or 50 (cosine) \\
+    Activation $\varphi$          & GELU (exact form) \\
+    Latent dimension $L$          & 8 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Autoencoder design study}
+\label{sec:design}
+
+The autoencoders in this work serve as measuring instruments.
+A detector whose own reconstruction error exceeds the inter-code signal cannot measure that signal.
+We therefore select a configuration that minimises the reconstruction error before using it for detection.
+All design choices use the POSEIDON-only planet set and are made on validation MSE.
+Selecting on test MSE would give the same configuration at every stage.
+\begin{enumerate}
+  \item \emph{Linear baseline.} Principal component analysis fitted on the training spectra, with $k\in\{4,\dots,16\}$ components, provides the reconstruction error of the optimal linear encoder of each size.
+  \item \emph{Latent dimension.} AE-S with $L\in\{4,\dots,16\}$, plateau schedule, one seed (42). We select the smallest $L$ at which validation MSE reaches its plateau.
+  \item \emph{Activation function.} AE-S with $L=8$ and $\varphi\in\{$ReLU, leaky ReLU, ELU, SELU, GELU, SiLU, Mish, tanh, softplus$\}$, plateau schedule, three seeds (42, 43, 44).
+  \item \emph{Width and schedule.} A $2\times2$ design over \{AE-S, AE-W\} $\times$ \{plateau with $P_{\mathrm{es}}=20$, cosine with $P_{\mathrm{es}}=50$\}, seeds 42 and 43, with a third seed (44) for AE-W with the cosine schedule. The schedule and the early-stopping patience vary jointly in this design, so their individual contributions are not separated.
+\end{enumerate}
+The selected configuration, AE-W with GELU, $L=8$, and the cosine schedule, is used for all cross-code experiments.
+
+\subsection{Detection experiments}
+\label{sec:detsetup}
+
+\paragraph{Noise-free detection.}
+One AE-W model is trained per code on the cross-code planet set.
+For POSEIDON and petitRADTRANS we train three initialisation seeds (42, 43, 44); for TauREx, one seed (42) [TODO: VERIFY whether to equalise seeds before submission].
+For each code, the run with the lowest own-code validation loss is used.
+We report the area under the receiver operating characteristic curve (AUC) for each of the six ordered pairs $(c,b)$, computed with the Mann--Whitney statistic
+\begin{equation}
+  \mathrm{AUC}_{cb} = \frac{1}{n_0 n_1}\sum_{i=1}^{n_0}\sum_{i'=1}^{n_1}\mathbb{1}\bigl[e_c(\mathbf{y}^{(b)}_{i'}) > e_c(\mathbf{y}^{(c)}_{i})\bigr],
+  \label{eq:auc}
+\end{equation}
+together with the fractions of test spectra above $\tau_c^{(95)}$ and $\tau_c^{(99)}$.
+
+\paragraph{Detection under noise.}
+The noise-free models are applied without retraining to test spectra corrupted according to Eq.~\eqref{eq:noise} with $\sigma\in\{2,5,10,20,30,50,100\}\,\mathrm{ppm}$.
+AUCs are averaged over two independent noise realisations per $\sigma$.
+For the $\chi^{2}$ score we use $\alpha=0.01$, which gives $\tau^{\mathrm{th}}=1.512$.
+We estimate this value from $2\times10^{6}$ samples of $\chi^{2}_{52}$.
+The empirical threshold $\tau^{\mathrm{emp}}_c$ is computed on validation spectra with independent noise realisations at the same $\sigma$.
+We report the true-positive rate at each threshold, the realised false-positive rate on nominal test spectra, and the oracle of Eq.~\eqref{eq:oracle}.
+
+\paragraph{Denoising models.}
+We train 12 denoising AE-W models, one for each code and each $\sigma\in\{10,20,30,50\}\,\mathrm{ppm}$, with seed 42 and otherwise the same protocol.
+Validation and test spectra use one fixed noise realisation each.
+These models are evaluated with the same $\chi^{2}$ protocol at the noise level used in training.
+
+\paragraph{Random-forest classifier.}
+The classifier uses 300 trees, at least 2 samples per leaf, and $\lfloor\sqrt{D}\rfloor=7$ candidate features per split, with Gini impurity and bootstrap sampling as defaults.
+For each $\sigma\in\{0,10,20,30,50\}\,\mathrm{ppm}$ we add one independent noise realisation to every training and test spectrum, standardise, and train and test at the same $\sigma$.
+This gives $3\times30{,}719=92{,}157$ training spectra and $3\times6{,}583=19{,}749$ test spectra.
+We report accuracy, per-class recall, macro-averaged one-versus-rest AUC, and the mean pairwise AUC under the score in Eq.~\eqref{eq:pairscore}.
+
+\subsection{Retrieval experiments}
+\label{sec:retsetup}
+
+The XGBoost~\cite{TODO_chen_xgboost} regressors use learning rate 0.1, maximum depth 8, row and column subsampling 0.8, minimum child weight 2, and histogram-based split finding.
+Each is trained for up to 3000 boosting rounds, with early stopping after 100 rounds without improvement in validation RMSE.
+Models are trained on noise-free spectra.
+To measure how the self/cross gap scales with data volume, we retrain on random subsets containing 5\%, 10\%, 25\%, and 50\% of the training planets.
+To measure the interaction between code systematics and noise, the noise-free models are applied without retraining to test spectra with $\sigma\in\{10,20,30,50\}\,\mathrm{ppm}$.
+Because these models never see noise during training, their noisy-test results are a lower bound on what a noise-aware retrieval would achieve.
+
+\subsection{Residual analysis settings}
+\label{sec:ressetup}
+
+The paired decomposition uses all 43{,}885 planets of the cross-code set without noise.
+For each of the three unordered pairs we compute the first four principal components of the absolute and relative residuals.
+We regress each score on $\bm{\theta}$ with a random forest of 100 trees, at least 5 samples per leaf, and half of the features per split, and report $R^2$ on a random 30\% held-out subset.
+
+\subsection{Implementation}
+\label{sec:impl}
+
+Neural models are implemented in PyTorch~\cite{TODO_paszke_pytorch}, the random forests and metrics in scikit-learn~\cite{TODO_pedregosa_sklearn}, and the boosted trees in XGBoost~\cite{TODO_chen_xgboost} [TODO: VERIFY library versions].
+All models are trained on CPU [TODO: VERIFY processor model and memory], with each autoencoder run restricted to a single thread and three to four runs executed in parallel.
+One 1000-epoch run takes about 650\,s for AE-S and 920--1130\,s for AE-W.
+Code and trained models are available at [TODO: VERIFY repository URL / archive DOI].
+
+% =====================================================================
+% FIGURE 1 PLACEHOLDER
+\begin{figure*}[t]
+  \centering
+  % \includegraphics[width=\textwidth]{figures/fig1_pipeline.pdf}
+  \caption{Overview of the study.
+  (a) Each parameter vector $\bm{\theta}$ is passed through three radiative-transfer codes and binned to the same 52 Ariel bins, giving one spectrum per code for every planet.
+  (b) Preprocessing: feature-height selection, optional white noise, and per-spectrum standardisation.
+  (c) Q1: paired residuals are split into an offset and a shape term, decomposed by PCA, and regressed on $\bm{\theta}$.
+  (d) Q2: one-class autoencoders, one per code, score spectra by reconstruction error or $\chi^{2}_{\nu}$ and are compared with a three-class random forest and a noise-limited oracle.
+  (e) Q3: XGBoost regressors trained on one code retrieve $\bm{\theta}$ from all three codes, giving a $3\times3$ self/cross matrix.}
+  \label{fig:pipeline}
+\end{figure*}
