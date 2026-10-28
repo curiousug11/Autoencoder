@@ -5,10 +5,12 @@ spectrum a - b (ppm) of the same planet isolates the code systematics. Each diff
 summarised by one number per planet:
   rms:      RMS of the difference after removing its wavelength mean (shape residual, ppm),
   offset:   wavelength mean of the difference (ppm); degenerate with Rp in a fit,
-  relative: rms divided by the pair's mean feature height (%).
+  relative: rms divided by the pair's mean feature height (%),
+  zmse:     MSE between the two z-normalised spectra (each scaled by its own mean and std),
+            i.e. the shape difference the autoencoders and the random forest see.
 Each figure has one row per code pair and one column per parameter (plus log g), with the
-binned median and 16-84% / 90th-percentile curves on top of the scatter. A second figure maps
-the median rms over T and log g.
+binned median and 16-84% / 90th-percentile curves on top of the scatter. Further figures map
+the median rms and zmse over T and log g.
 
 Planets: those passing the 210 ppm feature-height cut in all codes (as in anomaly.py), or
 all planets with --no-cut.
@@ -26,7 +28,7 @@ import matplotlib
 import numpy as np
 
 from anomaly import LABELS
-from data import DATA_DIR, DATASETS, feature_height, load_raw
+from data import DATA_DIR, DATASETS, feature_height, load_raw, znormalise
 from poor_recon import spearman
 
 matplotlib.use("Agg")
@@ -37,7 +39,7 @@ AXIS_LABELS = {"Rs": "Rs (R☉)", "Rp": "Rp (R_J)", "Mp": "Mp (M_J)", "T": "T (K
                "H2O": "log X(H₂O)", "CH4": "log X(CH₄)", "CO": "log X(CO)", "CO2": "log X(CO₂)",
                "NH3": "log X(NH₃)", "log_g": "log g (Mp/Rp², Jupiter units)"}
 METRICS = {"rms": "shape residual RMS (ppm)", "offset": "mean offset (ppm)",
-           "relative": "RMS / feature height (%)"}
+           "relative": "RMS / feature height (%)", "zmse": "z-normalised MSE"}
 
 
 def parse_args():
@@ -54,12 +56,13 @@ def parse_args():
 
 
 def pair_metrics(raw_a, raw_b):
-    """Per-planet rms, offset and relative residual for spectra in ppm, (n, bins) each."""
+    """Per-planet rms, offset, relative residual and z-normalised MSE for spectra in ppm, (n, bins) each."""
     diff = raw_a - raw_b
     offset = diff.mean(1)
     rms = np.sqrt(((diff - offset[:, None]) ** 2).mean(1))
     fh = (feature_height(raw_a) + feature_height(raw_b)) / 2
-    return {"rms": rms, "offset": offset, "relative": 100 * rms / fh}
+    zmse = ((znormalise(raw_a)[0] - znormalise(raw_b)[0]) ** 2).mean(1)
+    return {"rms": rms, "offset": offset, "relative": 100 * rms / fh, "zmse": zmse}
 
 
 def binned_percentiles(x, y, n_bins, qs=(16, 50, 84, 90)):
@@ -100,6 +103,8 @@ def main():
         res = {
             "rms_ppm": {"median": float(np.median(m["rms"])), "p90": float(np.percentile(m["rms"], 90)),
                         "p99": float(np.percentile(m["rms"], 99))},
+            "zmse": {"median": float(np.median(m["zmse"])), "p90": float(np.percentile(m["zmse"], 90)),
+                     "p99": float(np.percentile(m["zmse"], 99))},
             "offset_ppm": {"median": float(np.median(m["offset"])), "p16": float(np.percentile(m["offset"], 16)),
                            "p84": float(np.percentile(m["offset"], 84))},
             "spearman": {k: {c: spearman(x[c], m[k]) for c in columns} for k in METRICS},
@@ -111,7 +116,8 @@ def main():
 
     for k, ylabel in METRICS.items():
         plot_scatter(args, pairs, metrics, x, columns, k, ylabel, out / f"residual_scatter_{k}.png")
-    plot_map(args, pairs, metrics, x, out / "residual_map_T_logg.png")
+    plot_map(args, pairs, metrics, x, "rms", out / "residual_map_T_logg.png")
+    plot_map(args, pairs, metrics, x, "zmse", out / "residual_map_zmse_T_logg.png")
     print(f"\nsaved to {out}/")
 
 
@@ -120,11 +126,13 @@ def report(a, b, res, columns, n_top):
     print(f"\n=== {LABELS[a]} - {LABELS[b]} ===")
     print(f"rms: median {r['median']:.1f} ppm, 90th pct {r['p90']:.1f}, 99th pct {r['p99']:.1f}; "
           f"offset: median {o['median']:+.1f} ppm (16-84%: {o['p16']:+.1f} to {o['p84']:+.1f})")
-    print(f"  {'':>8} {'rho(rms)':>9} {'rho(offset)':>12} {'rho(rel)':>9}   median: top {n_top} by rms vs rest")
+    print(f"  {'':>8} {'rho(rms)':>9} {'rho(offset)':>12} {'rho(rel)':>9} {'rho(zmse)':>10}   "
+          f"median: top {n_top} by rms vs rest")
     for c in columns:
         s = res["spearman"]
         t, rest = res["top_vs_rest_median"][c]
-        print(f"  {c:>8} {s['rms'][c]:>+9.2f} {s['offset'][c]:>+12.2f} {s['relative'][c]:>+9.2f}   "
+        print(f"  {c:>8} {s['rms'][c]:>+9.2f} {s['offset'][c]:>+12.2f} {s['relative'][c]:>+9.2f} "
+              f"{s['zmse'][c]:>+10.2f}   "
               f"{t:>9.3g} vs {rest:<9.3g}")
 
 
@@ -140,9 +148,7 @@ def plot_scatter(args, pairs, metrics, x, columns, key, ylabel, path):
             ax.fill_between(centres, pct[16], pct[84], color="C0", alpha=0.3, lw=0)
             ax.plot(centres, pct[50], color="k", lw=1.3)
             ax.plot(centres, pct[90], color="C3", lw=1, ls="--")
-            if key == "rms":
-                ax.set_yscale("log")
-            elif key == "offset":
+            if key == "offset":
                 ax.set_yscale("symlog", linthresh=10)
                 ax.axhline(0, color="k", lw=0.6)
             else:
@@ -166,8 +172,8 @@ def plot_scatter(args, pairs, metrics, x, columns, key, ylabel, path):
     plt.close(fig)
 
 
-def plot_map(args, pairs, metrics, x, path):
-    """Median rms in bins of T and log g, one panel per pair."""
+def plot_map(args, pairs, metrics, x, key, path):
+    """Median of metric `key` in bins of T and log g, one panel per pair."""
     t, g = x["T"], x["log_g"]
     tb = np.linspace(t.min(), t.max(), 16)
     gb = np.linspace(np.percentile(g, 0.5), np.percentile(g, 99.5), 16)
@@ -176,7 +182,7 @@ def plot_map(args, pairs, metrics, x, path):
     inside = (g >= gb[0]) & (g <= gb[-1])
     maps = []
     for a, b in pairs:
-        y = metrics[(a, b)]["rms"]
+        y = metrics[(a, b)][key]
         med = np.full((len(tb) - 1, len(gb) - 1), np.nan)
         for p in range(len(tb) - 1):
             for q in range(len(gb) - 1):
@@ -184,13 +190,13 @@ def plot_map(args, pairs, metrics, x, path):
                 if sel.sum() >= 20:
                     med[p, q] = np.median(y[sel])
         maps.append(med)
-    vmax = np.nanmax(maps)
+    vmin, vmax = np.nanmin(maps), np.nanmax(maps)
     fig, axes = plt.subplots(1, len(pairs), figsize=(5 * len(pairs), 4.2), squeeze=False)
     for ax, (a, b), med in zip(axes[0], pairs, maps):
-        im = ax.pcolormesh(tb, gb, med.T, cmap="magma_r", norm=matplotlib.colors.LogNorm(1, vmax))
+        im = ax.pcolormesh(tb, gb, med.T, cmap="magma_r", norm=matplotlib.colors.LogNorm(vmin, vmax))
         ax.set(xlabel="T (K)", title=f"{LABELS[a]} − {LABELS[b]}")
     axes[0, 0].set_ylabel(AXIS_LABELS["log_g"])
-    fig.colorbar(im, ax=axes[0].tolist(), label="median shape residual RMS (ppm)")
+    fig.colorbar(im, ax=axes[0].tolist(), label=f"median {METRICS[key]}")
     fig.savefig(path, dpi=130, bbox_inches="tight")
     plt.close(fig)
 
