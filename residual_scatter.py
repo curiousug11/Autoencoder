@@ -15,11 +15,18 @@ binned median and 16-84% / 90th-percentile curves on top of the scatter. Further
 the median rms, zmse and mse over T and log g.
 
 Planets: those passing the 210 ppm feature-height cut in all codes (as in anomaly.py), or
-all planets with --no-cut.
+all planets with --no-cut; --t-max keeps only planets cooler than that temperature.
+
+With --gravity linear the gravity column is g in m/s^2 (g = G Mp / Rp^2) instead of
+log10(Mp/Rp^2), and --scale-height adds a column for the scale height
+H = k_B T / (mu m_H g) in km, with mean molecular weight --mu. The g and H axes are linear,
+clipped at their 99th percentile, unless --log-x is given (log-scaled axes, "_logx" filenames).
 
 Usage:
     python residual_scatter.py
     python residual_scatter.py --no-cut --out runs/residuals/scatter_nocut
+    python residual_scatter.py --no-cut --t-max 1500 --gravity linear --scale-height --metrics mse zmse \
+        --no-maps --out runs/residuals/scatter_nocut_T1500
 """
 
 import argparse
@@ -39,7 +46,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 PARAMS = ["Rs", "Rp", "Mp", "T", "H2O", "CH4", "CO", "CO2", "NH3"]
 AXIS_LABELS = {"Rs": "Rs (R☉)", "Rp": "Rp (R_J)", "Mp": "Mp (M_J)", "T": "T (K)",
                "H2O": "log X(H₂O)", "CH4": "log X(CH₄)", "CO": "log X(CO)", "CO2": "log X(CO₂)",
-               "NH3": "log X(NH₃)", "log_g": "log g (Mp/Rp², Jupiter units)"}
+               "NH3": "log X(NH₃)", "log_g": "log g (Mp/Rp², Jupiter units)", "g": "g (m/s²)",
+               "H": "scale height H (km)"}
+G, M_JUP, R_JUP = 6.674e-11, 1.898e27, 7.1492e7  # SI; equatorial Jupiter radius
+K_B, M_H = 1.380649e-23, 1.6735575e-27
 METRICS = {"rms": "shape residual RMS (ppm)", "offset": "mean offset (ppm)",
            "relative": "RMS / feature height (%)", "zmse": "z-normalised MSE",
            "mse": "raw MSE (ppm²)"}
@@ -55,6 +65,14 @@ def parse_args():
     p.add_argument("--n-bins", type=int, default=20, help="quantile bins for the median curves")
     p.add_argument("--top-frac", type=float, default=0.05,
                    help="fraction of planets with the largest rms summarised in the printed table")
+    p.add_argument("--t-max", type=float, default=None, help="keep only planets with T below this (K)")
+    p.add_argument("--metrics", nargs="+", default=list(METRICS), choices=list(METRICS), help="figures to plot")
+    p.add_argument("--gravity", default="log", choices=["log", "linear"],
+                   help="gravity column: log10(Mp/Rp^2) in Jupiter units, or g in m/s^2")
+    p.add_argument("--scale-height", action="store_true", help="add a scale-height column (km)")
+    p.add_argument("--mu", type=float, default=2.3, help="mean molecular weight for the scale height")
+    p.add_argument("--log-x", action="store_true", help="log-scaled axes for the g and H columns")
+    p.add_argument("--no-maps", action="store_true", help="skip the T-log g maps")
     return p.parse_args()
 
 
@@ -88,16 +106,21 @@ def main():
     if not args.no_cut:
         for d in args.datasets:
             keep &= feature_height(raw[d]) >= args.min_feature_height_ppm * 1e-6
+    if args.t_max is not None:
+        keep &= params[:, PARAMS.index("T")] < args.t_max
     raw = {d: s[keep] * 1e6 for d, s in raw.items()}  # ppm
     params = params[keep]
     x = {name: params[:, j] for j, name in enumerate(PARAMS)}
     x["log_g"] = np.log10(x["Mp"] / x["Rp"] ** 2)
-    columns = PARAMS + ["log_g"]
+    x["g"] = G * x["Mp"] * M_JUP / (x["Rp"] * R_JUP) ** 2
+    x["H"] = K_B * x["T"] / (args.mu * M_H * x["g"]) / 1e3
+    columns = PARAMS + ["g" if args.gravity == "linear" else "log_g"] + (["H"] if args.scale_height else [])
     pairs = [(a, b) for i, a in enumerate(args.datasets) for b in args.datasets[i + 1:]]
     metrics = {(a, b): pair_metrics(raw[a], raw[b]) for a, b in pairs}
     print(f"{keep.sum()} planets")
 
-    results = {"n_planets": int(keep.sum()), "top_frac": args.top_frac, "pairs": {}}
+    results = {"n_planets": int(keep.sum()), "cut": not args.no_cut, "t_max": args.t_max, "mu": args.mu,
+               "top_frac": args.top_frac, "pairs": {}}
     n_top = int(round(args.top_frac * keep.sum()))
     for a, b in pairs:
         m = metrics[(a, b)]
@@ -117,8 +140,12 @@ def main():
         report(a, b, res, columns, n_top)
     (out / "residual_scatter.json").write_text(json.dumps(results, indent=2))
 
-    for k, ylabel in METRICS.items():
-        plot_scatter(args, pairs, metrics, x, columns, k, ylabel, out / f"residual_scatter_{k}.png")
+    suffix = "_logx" if args.log_x else ""
+    for k in args.metrics:
+        plot_scatter(args, pairs, metrics, x, columns, k, METRICS[k], out / f"residual_scatter_{k}{suffix}.png")
+    if args.no_maps:
+        print(f"\nsaved to {out}/")
+        return
     plot_map(args, pairs, metrics, x, "rms", out / "residual_map_T_logg.png")
     plot_map(args, pairs, metrics, x, "zmse", out / "residual_map_zmse_T_logg.png")
     plot_map(args, pairs, metrics, x, "mse", out / "residual_map_mse_T_logg.png")
@@ -160,6 +187,11 @@ def plot_scatter(args, pairs, metrics, x, columns, key, ylabel, path):
             rho = spearman(x[c], y)
             ax.text(0.03, 0.95, f"ρ={rho:+.2f}", transform=ax.transAxes, fontsize=7, va="top",
                     bbox=dict(facecolor="w", alpha=0.7, lw=0))
+            if c in ("g", "H"):
+                if args.log_x:
+                    ax.set_xscale("log")
+                else:
+                    ax.set_xlim(0, np.percentile(x[c], 99))
             ax.tick_params(labelsize=6)
             if i == len(pairs) - 1:
                 ax.set_xlabel(AXIS_LABELS[c], fontsize=7)
@@ -169,8 +201,15 @@ def plot_scatter(args, pairs, metrics, x, columns, key, ylabel, path):
                plt.Rectangle((0, 0), 1, 1, color="C0", alpha=0.3, label="16–84%"),
                plt.Line2D([], [], color="C3", lw=1, ls="--", label="90th percentile")]
     fig.legend(handles=handles, loc="upper right", ncol=3, fontsize=8)
+    sel = ("210 ppm cut" if not args.no_cut else "no feature-height cut") + \
+        (f", T < {args.t_max:g} K" if args.t_max is not None else "")
+    note = ""
+    if "H" in columns:
+        note += f"; H for μ = {args.mu:g}"
+    if not args.log_x and any(c in columns for c in ("g", "H")):
+        note += "; g/H axes clipped at 99th percentile"
     fig.suptitle(f"Per-planet {ylabel} between codes vs planet parameters "
-                 f"({len(metrics[pairs[0]][key])} planets; ρ = Spearman)", fontsize=10, x=0.4)
+                 f"({len(metrics[pairs[0]][key])} planets, {sel}; ρ = Spearman{note})", fontsize=10, x=0.4)
     fig.tight_layout(rect=(0, 0, 1, 0.96))
     fig.savefig(path, dpi=130)
     plt.close(fig)
