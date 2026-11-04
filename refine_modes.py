@@ -12,6 +12,7 @@ settings in summary.json and the same random seed. The replay is checked against
 reference indices.
 
     python refine_modes.py                          # both runs/mode_paths and runs/mode_paths_noisy
+    python refine_modes.py --plot-only              # redraw runs/mode_paths/refine_barriers.png
 """
 
 import argparse
@@ -81,6 +82,41 @@ def refine_group(models, lo, hi, data, ua, ub, sigma, a):
     }
 
 
+def plot(runs, path):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from mode_paths import CODE_LABEL
+    colors = {"pos": "#1f77b4", "prt": "#d62728", "taurex": "#2ca02c"}
+    markers = {"pairs": "o", "control": "s", "random": "^"}
+    fig, ax = plt.subplots(figsize=(8.4, 4.6))
+    seen = set()
+    for run in runs:
+        with open(os.path.join(run, "refine.json")) as fh:
+            cases = json.load(fh)["cases"]
+        noisy = run.rstrip("/").endswith("noisy")
+        for w in cases:
+            lab = (w["code"], w["set"])
+            ax.scatter(w["barrier_first_pass"], max(w["barrier_best"], 1e-3), s=36, marker=markers[w["set"]],
+                       facecolors=colors[w["code"]] if noisy else "none", edgecolors=colors[w["code"]],
+                       label=f"{CODE_LABEL[w['code']]}, {w['set']}" if lab not in seen else None)
+            seen.add(lab)
+    ax.set_xscale("log")
+    ax.set_yscale("symlog", linthresh=0.01)
+    ax.axhline(2, color="k", lw=0.8, ls="--")
+    ax.axhline(0.5, color="k", lw=0.8)
+    ax.set_ylim(-0.002, 30)
+    ax.text(0.98, 2.4, "separate above this", fontsize=7, ha="right", transform=ax.get_yaxis_transform())
+    ax.text(0.98, 0.36, "one basin below this", fontsize=7, ha="right", va="top", transform=ax.get_yaxis_transform())
+    ax.set_xlabel("barrier Δχ², first pass (12 images, straight start)")
+    ax.set_ylabel("barrier Δχ² after refinement\n(re-descended ends, 24 images, best of 16 routes)")
+    ax.set_title("Every credible separate case, refined (open: noiseless, filled: noisy)", fontsize=9)
+    ax.legend(fontsize=7, loc="upper left", bbox_to_anchor=(1.01, 1))
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--runs", nargs="+", default=["runs/mode_paths", "runs/mode_paths_noisy"])
@@ -92,7 +128,12 @@ def main():
     ap.add_argument("--restarts", type=int, default=3, help="fresh-damping descents of each endpoint")
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--threads", type=int, default=0)
+    ap.add_argument("--plot-only", action="store_true")
     a = ap.parse_args()
+    fig_path = os.path.join(a.runs[0], "refine_barriers.png")
+    if a.plot_only:
+        plot(a.runs, fig_path)
+        return
     if a.threads:
         torch.set_num_threads(a.threads)
 
@@ -153,6 +194,7 @@ def main():
         with open(os.path.join(run, "refine.json"), "w") as fh:
             json.dump({"settings": vars(a), "verdict_counts": verdicts, "cases": rows}, fh, indent=1)
         print(f"{run}: {len(rows)} cases, {verdicts} ({time.time() - t0:.0f}s)", flush=True)
+    plot(a.runs, fig_path)
 
 
 if __name__ == "__main__":
