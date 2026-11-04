@@ -39,7 +39,7 @@ step in the unit box) is run through the same procedure to measure the false
 drawn uniformly from the prior box: it shows whether the chi2 landscape has
 separate local minima at all and whether the method can resolve them.
 
-    python mode_paths.py                                          # noiseless data
+    python mode_paths.py --codes pos --threads 1                  # noiseless data, one code
     python mode_paths.py --noisy --out runs/mode_paths_noisy      # one noise draw per pair
 """
 import argparse
@@ -438,12 +438,12 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--codes", nargs="+", default=["pos", "prt", "taurex"])
     ap.add_argument("--sigmas", nargs="+", type=float, default=[30, 50])
-    ap.add_argument("--max-pairs", type=int, default=600)
-    ap.add_argument("--n-control", type=int, default=200)
-    ap.add_argument("--n-random", type=int, default=200)
+    ap.add_argument("--max-pairs", type=int, default=300)
+    ap.add_argument("--n-control", type=int, default=100)
+    ap.add_argument("--n-random", type=int, default=100)
     ap.add_argument("--batch", type=int, default=150)
-    ap.add_argument("--images", type=int, default=16)
-    ap.add_argument("--iters", type=int, default=150, help="string-method iterations")
+    ap.add_argument("--images", type=int, default=12)
+    ap.add_argument("--iters", type=int, default=120, help="string-method iterations")
     ap.add_argument("--descent-steps", type=int, default=300, help="Levenberg-Marquardt steps per endpoint")
     ap.add_argument("--one-basin", type=float, default=0.5, help="barrier below this: one basin")
     ap.add_argument("--same-point", type=float, default=0.02, help="minima closer than this (unit box): one basin")
