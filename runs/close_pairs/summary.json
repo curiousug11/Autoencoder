@@ -1,0 +1,766 @@
+{
+  "pos": {
+    "code": "pos",
+    "n_spectra": 98725,
+    "n_feature_rich": 44026,
+    "feature_cut_ppm": 210.0,
+    "chi2_95_9dof": 16.918977604620448,
+    "per_sigma": {
+      "10": {
+        "threshold_rms_ppm_per_bin": 5.704077085164685,
+        "n_pairs_all": 1484660,
+        "frac_with_partner_all": 0.34783489491010383,
+        "frac_with_partner_featureless": 0.6271595458783524,
+        "frac_with_partner_feature_rich": 0.0007949847817198928,
+        "n_pairs_feature_rich": 17,
+        "param_dist_pct_16_50_84": [
+          0.296,
+          0.534,
+          0.79
+        ],
+        "random_param_dist_median": 1.1262719324467918,
+        "median_abs_dU_pair": {
+          "Rs": 0.14902313106406873,
+          "Rp": 0.11992445930886031,
+          "Mp": 0.07487865508068892,
+          "T": 0.0398817906577682,
+          "chem1": 0.05800882357080006,
+          "chem2": 0.10369799438816632,
+          "chem3": 0.18168359674869045,
+          "chem4": 0.04819867158756008,
+          "chem5": 0.14002334714232373
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.27928094630653344,
+          "Rp": 0.18991507915651082,
+          "Mp": 0.28047960254630755,
+          "T": 0.2674232274343926,
+          "chem1": 0.29340354060813323,
+          "chem2": 0.23839919178063174,
+          "chem3": 0.29395323030008796,
+          "chem4": 0.29284234139891535,
+          "chem5": 0.18090219810197572
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.00021079668691323383,
+          "log T Rp^3/(Mp Rs^2)": 0.021334318081907444,
+          "mean log abundance": 0.3495665108861248
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18505226333278646,
+          "log T Rp^3/(Mp Rs^2)": 0.42808924908354484,
+          "mean log abundance": 0.7438641998945461
+        },
+        "frac_species_swap_2dex": 0.0,
+        "species_swap_counts": {}
+      },
+      "20": {
+        "threshold_rms_ppm_per_bin": 11.40815417032937,
+        "n_pairs_all": 3472802,
+        "frac_with_partner_all": 0.4664269435300076,
+        "frac_with_partner_featureless": 0.8291924898078575,
+        "frac_with_partner_feature_rich": 0.015717984827147594,
+        "n_pairs_feature_rich": 333,
+        "param_dist_pct_16_50_84": [
+          0.382,
+          0.575,
+          0.831
+        ],
+        "random_param_dist_median": 1.1262719324467918,
+        "median_abs_dU_pair": {
+          "Rs": 0.19990179841922817,
+          "Rp": 0.13581108893519647,
+          "Mp": 0.12450774090769678,
+          "T": 0.07956825431183678,
+          "chem1": 0.09849200647634299,
+          "chem2": 0.09435241100846893,
+          "chem3": 0.2429638429169573,
+          "chem4": 0.054523068600916935,
+          "chem5": 0.09327726085203533
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.27928094630653344,
+          "Rp": 0.18991507915651082,
+          "Mp": 0.28047960254630755,
+          "T": 0.2674232274343926,
+          "chem1": 0.29340354060813323,
+          "chem2": 0.23839919178063174,
+          "chem3": 0.29395323030008796,
+          "chem4": 0.29284234139891535,
+          "chem5": 0.18090219810197572
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.0005185023459131355,
+          "log T Rp^3/(Mp Rs^2)": 0.037448495959544914,
+          "mean log abundance": 0.38664616528919193
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18505226333278646,
+          "log T Rp^3/(Mp Rs^2)": 0.42808924908354484,
+          "mean log abundance": 0.7438641998945461
+        },
+        "frac_species_swap_2dex": 0.021021021021021023,
+        "species_swap_counts": {
+          "chem1-chem3": 3,
+          "chem3-chem4": 2,
+          "chem3-chem5": 1,
+          "chem1-chem4": 1
+        }
+      },
+      "30": {
+        "threshold_rms_ppm_per_bin": 17.11223125549406,
+        "n_pairs_all": 5646234,
+        "frac_with_partner_all": 0.545160800202583,
+        "frac_with_partner_featureless": 0.9284264794603192,
+        "frac_with_partner_feature_rich": 0.06898196520238041,
+        "n_pairs_feature_rich": 1798,
+        "param_dist_pct_16_50_84": [
+          0.41,
+          0.63,
+          0.887
+        ],
+        "random_param_dist_median": 1.1262719324467918,
+        "median_abs_dU_pair": {
+          "Rs": 0.20059649039684266,
+          "Rp": 0.1343724414596424,
+          "Mp": 0.13949084150390273,
+          "T": 0.1059142159882075,
+          "chem1": 0.11120220176067461,
+          "chem2": 0.0980803010526372,
+          "chem3": 0.248572004585022,
+          "chem4": 0.09147613645782005,
+          "chem5": 0.1034115371607924
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.27928094630653344,
+          "Rp": 0.18991507915651082,
+          "Mp": 0.28047960254630755,
+          "T": 0.2674232274343926,
+          "chem1": 0.29340354060813323,
+          "chem2": 0.23839919178063174,
+          "chem3": 0.29395323030008796,
+          "chem4": 0.29284234139891535,
+          "chem5": 0.18090219810197572
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.000681974020490448,
+          "log T Rp^3/(Mp Rs^2)": 0.05213319624043855,
+          "mean log abundance": 0.43570961714383083
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18505226333278646,
+          "log T Rp^3/(Mp Rs^2)": 0.42808924908354484,
+          "mean log abundance": 0.7438641998945461
+        },
+        "frac_species_swap_2dex": 0.0389321468298109,
+        "species_swap_counts": {
+          "chem1-chem3": 31,
+          "chem3-chem4": 15,
+          "chem2-chem3": 9,
+          "chem3-chem5": 6,
+          "chem1-chem5": 5,
+          "chem1-chem4": 2,
+          "chem2-chem4": 1,
+          "chem4-chem5": 1
+        }
+      },
+      "50": {
+        "threshold_rms_ppm_per_bin": 28.52038542582343,
+        "n_pairs_all": 10301469,
+        "frac_with_partner_all": 0.6448518612306913,
+        "frac_with_partner_featureless": 0.9839668001243167,
+        "frac_with_partner_feature_rich": 0.22352700676872758,
+        "n_pairs_feature_rich": 13418,
+        "param_dist_pct_16_50_84": [
+          0.488,
+          0.718,
+          0.991
+        ],
+        "random_param_dist_median": 1.1262719324467918,
+        "median_abs_dU_pair": {
+          "Rs": 0.22017029056472934,
+          "Rp": 0.15373830505187952,
+          "Mp": 0.15685689554228002,
+          "T": 0.13332204292754796,
+          "chem1": 0.15091728948523803,
+          "chem2": 0.11098629784602712,
+          "chem3": 0.2711788606938671,
+          "chem4": 0.13280961224174165,
+          "chem5": 0.11560455072571545
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.27928094630653344,
+          "Rp": 0.18991507915651082,
+          "Mp": 0.28047960254630755,
+          "T": 0.2674232274343926,
+          "chem1": 0.29340354060813323,
+          "chem2": 0.23839919178063174,
+          "chem3": 0.29395323030008796,
+          "chem4": 0.29284234139891535,
+          "chem5": 0.18090219810197572
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.0009653507756930708,
+          "log T Rp^3/(Mp Rs^2)": 0.07708581972518536,
+          "mean log abundance": 0.5118922420021481
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18505226333278646,
+          "log T Rp^3/(Mp Rs^2)": 0.42808924908354484,
+          "mean log abundance": 0.7438641998945461
+        },
+        "frac_species_swap_2dex": 0.09032642718736027,
+        "species_swap_counts": {
+          "chem1-chem3": 403,
+          "chem3-chem4": 237,
+          "chem1-chem5": 161,
+          "chem3-chem5": 152,
+          "chem2-chem3": 101,
+          "chem1-chem4": 74,
+          "chem1-chem2": 41,
+          "chem2-chem4": 20,
+          "chem4-chem5": 17,
+          "chem2-chem5": 6
+        }
+      }
+    },
+    "sampling": {
+      "graph_k": 15,
+      "per_sigma": {
+        "10": {
+          "median_one_step_dchi2_feature_rich": 157164.49757811177,
+          "frac_one_step_below_threshold_feature_rich": 0.0001362831054376959
+        },
+        "20": {
+          "median_one_step_dchi2_feature_rich": 39291.12439452794,
+          "frac_one_step_below_threshold_feature_rich": 0.0009994094398764366
+        },
+        "30": {
+          "median_one_step_dchi2_feature_rich": 17462.721953123528,
+          "frac_one_step_below_threshold_feature_rich": 0.0035660745922863764
+        },
+        "50": {
+          "median_one_step_dchi2_feature_rich": 6286.579903124471,
+          "frac_one_step_below_threshold_feature_rich": 0.012538045700268024
+        }
+      }
+    },
+    "n_feature_rich_pairs_exported": 13418
+  },
+  "prt": {
+    "code": "prt",
+    "n_spectra": 98725,
+    "n_feature_rich": 44446,
+    "feature_cut_ppm": 210.0,
+    "chi2_95_9dof": 16.918977604620448,
+    "per_sigma": {
+      "10": {
+        "threshold_rms_ppm_per_bin": 5.704077085164685,
+        "n_pairs_all": 1474822,
+        "frac_with_partner_all": 0.3441276272474044,
+        "frac_with_partner_featureless": 0.6252141712264412,
+        "frac_with_partner_feature_rich": 0.0008549700760473384,
+        "n_pairs_feature_rich": 19,
+        "param_dist_pct_16_50_84": [
+          0.322,
+          0.536,
+          0.944
+        ],
+        "random_param_dist_median": 1.1292898690963562,
+        "median_abs_dU_pair": {
+          "Rs": 0.20531491837899418,
+          "Rp": 0.11992445930886031,
+          "Mp": 0.12107239654595559,
+          "T": 0.03722054069067282,
+          "chem1": 0.05800882357080006,
+          "chem2": 0.08155530244131678,
+          "chem3": 0.18168359674869045,
+          "chem4": 0.04819867158756008,
+          "chem5": 0.14002334714232373
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.2801250834945943,
+          "Rp": 0.19006234929543736,
+          "Mp": 0.2810714072057571,
+          "T": 0.2676191148605339,
+          "chem1": 0.2938071114732235,
+          "chem2": 0.2363568995782404,
+          "chem3": 0.29259046832256996,
+          "chem4": 0.29400551484161136,
+          "chem5": 0.18226229822091622
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.0002166595870118672,
+          "log T Rp^3/(Mp Rs^2)": 0.021334318081907444,
+          "mean log abundance": 0.31723123326726643
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18361768615591273,
+          "log T Rp^3/(Mp Rs^2)": 0.4273875245051899,
+          "mean log abundance": 0.7424049659537117
+        },
+        "frac_species_swap_2dex": 0.0,
+        "species_swap_counts": {}
+      },
+      "20": {
+        "threshold_rms_ppm_per_bin": 11.40815417032937,
+        "n_pairs_all": 3452290,
+        "frac_with_partner_all": 0.4618890858445176,
+        "frac_with_partner_featureless": 0.828497208865307,
+        "frac_with_partner_feature_rich": 0.014174503892363768,
+        "n_pairs_feature_rich": 302,
+        "param_dist_pct_16_50_84": [
+          0.379,
+          0.575,
+          0.831
+        ],
+        "random_param_dist_median": 1.1292898690963562,
+        "median_abs_dU_pair": {
+          "Rs": 0.20041017480434195,
+          "Rp": 0.1330863123752583,
+          "Mp": 0.123886440501005,
+          "T": 0.07122527229864045,
+          "chem1": 0.08288154887391158,
+          "chem2": 0.08809255426518328,
+          "chem3": 0.258774220776693,
+          "chem4": 0.05877370672484519,
+          "chem5": 0.09372042378362637
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.2801250834945943,
+          "Rp": 0.19006234929543736,
+          "Mp": 0.2810714072057571,
+          "T": 0.2676191148605339,
+          "chem1": 0.2938071114732235,
+          "chem2": 0.2363568995782404,
+          "chem3": 0.29259046832256996,
+          "chem4": 0.29400551484161136,
+          "chem5": 0.18226229822091622
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.0005309753457757166,
+          "log T Rp^3/(Mp Rs^2)": 0.03471590319051443,
+          "mean log abundance": 0.3935281908156094
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18361768615591273,
+          "log T Rp^3/(Mp Rs^2)": 0.4273875245051899,
+          "mean log abundance": 0.7424049659537117
+        },
+        "frac_species_swap_2dex": 0.019867549668874173,
+        "species_swap_counts": {
+          "chem1-chem3": 3,
+          "chem3-chem5": 1,
+          "chem3-chem4": 1,
+          "chem1-chem4": 1
+        }
+      },
+      "30": {
+        "threshold_rms_ppm_per_bin": 17.11223125549406,
+        "n_pairs_all": 5613688,
+        "frac_with_partner_all": 0.5402177766523171,
+        "frac_with_partner_featureless": 0.929107021131561,
+        "frac_with_partner_feature_rich": 0.06529271475498358,
+        "n_pairs_feature_rich": 1687,
+        "param_dist_pct_16_50_84": [
+          0.411,
+          0.628,
+          0.882
+        ],
+        "random_param_dist_median": 1.1292898690963562,
+        "median_abs_dU_pair": {
+          "Rs": 0.20125459780765914,
+          "Rp": 0.13479577985739055,
+          "Mp": 0.13812549744837085,
+          "T": 0.09804609042349544,
+          "chem1": 0.10970608747507932,
+          "chem2": 0.09700952927811059,
+          "chem3": 0.25135576121635617,
+          "chem4": 0.09352932837665456,
+          "chem5": 0.10719587580879059
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.2801250834945943,
+          "Rp": 0.19006234929543736,
+          "Mp": 0.2810714072057571,
+          "T": 0.2676191148605339,
+          "chem1": 0.2938071114732235,
+          "chem2": 0.2363568995782404,
+          "chem3": 0.29259046832256996,
+          "chem4": 0.29400551484161136,
+          "chem5": 0.18226229822091622
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.0006866221813697261,
+          "log T Rp^3/(Mp Rs^2)": 0.049855979041074416,
+          "mean log abundance": 0.433773865169206
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18361768615591273,
+          "log T Rp^3/(Mp Rs^2)": 0.4273875245051899,
+          "mean log abundance": 0.7424049659537117
+        },
+        "frac_species_swap_2dex": 0.03793716656787196,
+        "species_swap_counts": {
+          "chem1-chem3": 25,
+          "chem3-chem4": 15,
+          "chem2-chem3": 10,
+          "chem3-chem5": 6,
+          "chem1-chem5": 4,
+          "chem1-chem4": 2,
+          "chem2-chem4": 1,
+          "chem4-chem5": 1
+        }
+      },
+      "50": {
+        "threshold_rms_ppm_per_bin": 28.52038542582343,
+        "n_pairs_all": 10246395,
+        "frac_with_partner_all": 0.6402937452519625,
+        "frac_with_partner_featureless": 0.9846533650214632,
+        "frac_with_partner_feature_rich": 0.2197498087566935,
+        "n_pairs_feature_rich": 13047,
+        "param_dist_pct_16_50_84": [
+          0.486,
+          0.717,
+          0.988
+        ],
+        "random_param_dist_median": 1.1292898690963562,
+        "median_abs_dU_pair": {
+          "Rs": 0.21977578527077624,
+          "Rp": 0.15254387811186085,
+          "Mp": 0.15557433773951324,
+          "T": 0.12989268170876977,
+          "chem1": 0.1472076303669579,
+          "chem2": 0.11053575606667843,
+          "chem3": 0.2723634309868919,
+          "chem4": 0.13579140462396994,
+          "chem5": 0.11635411144387178
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.2801250834945943,
+          "Rp": 0.19006234929543736,
+          "Mp": 0.2810714072057571,
+          "T": 0.2676191148605339,
+          "chem1": 0.2938071114732235,
+          "chem2": 0.2363568995782404,
+          "chem3": 0.29259046832256996,
+          "chem4": 0.29400551484161136,
+          "chem5": 0.18226229822091622
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.0009686994061074428,
+          "log T Rp^3/(Mp Rs^2)": 0.07550664922773631,
+          "mean log abundance": 0.5142466115612523
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18361768615591273,
+          "log T Rp^3/(Mp Rs^2)": 0.4273875245051899,
+          "mean log abundance": 0.7424049659537117
+        },
+        "frac_species_swap_2dex": 0.08990572545412738,
+        "species_swap_counts": {
+          "chem1-chem3": 365,
+          "chem3-chem4": 247,
+          "chem3-chem5": 147,
+          "chem1-chem5": 140,
+          "chem2-chem3": 111,
+          "chem1-chem4": 80,
+          "chem1-chem2": 39,
+          "chem2-chem4": 22,
+          "chem4-chem5": 18,
+          "chem2-chem5": 4
+        }
+      }
+    },
+    "sampling": {
+      "graph_k": 15,
+      "per_sigma": {
+        "10": {
+          "median_one_step_dchi2_feature_rich": 156624.08680232425,
+          "frac_one_step_below_threshold_feature_rich": 8.999685011024614e-05
+        },
+        "20": {
+          "median_one_step_dchi2_feature_rich": 39156.02170058106,
+          "frac_one_step_below_threshold_feature_rich": 0.0008549700760473384
+        },
+        "30": {
+          "median_one_step_dchi2_feature_rich": 17402.67631136936,
+          "frac_one_step_below_threshold_feature_rich": 0.0035548755793547225
+        },
+        "50": {
+          "median_one_step_dchi2_feature_rich": 6264.963472092969,
+          "frac_one_step_below_threshold_feature_rich": 0.012262070827521036
+        }
+      }
+    },
+    "n_feature_rich_pairs_exported": 13047
+  },
+  "taurex": {
+    "code": "taurex",
+    "n_spectra": 98725,
+    "n_feature_rich": 44311,
+    "feature_cut_ppm": 210.0,
+    "chi2_95_9dof": 16.918977604620448,
+    "per_sigma": {
+      "10": {
+        "threshold_rms_ppm_per_bin": 5.704077085164685,
+        "n_pairs_all": 1477184,
+        "frac_with_partner_all": 0.3445733096986579,
+        "frac_with_partner_featureless": 0.6245267761973021,
+        "frac_with_partner_feature_rich": 0.0007898715894473155,
+        "n_pairs_feature_rich": 18,
+        "param_dist_pct_16_50_84": [
+          0.314,
+          0.56,
+          0.936
+        ],
+        "random_param_dist_median": 1.1266386796876562,
+        "median_abs_dU_pair": {
+          "Rs": 0.22612164681546038,
+          "Rp": 0.13784062425018434,
+          "Mp": 0.0999446490141166,
+          "T": 0.04689026041279104,
+          "chem1": 0.04493353691011337,
+          "chem2": 0.0800027475891578,
+          "chem3": 0.11637498161252073,
+          "chem4": 0.04949327793121326,
+          "chem5": 0.15142958073309556
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.2779441417476757,
+          "Rp": 0.19143706020190615,
+          "Mp": 0.2797836592109786,
+          "T": 0.2671007102690178,
+          "chem1": 0.2957712550795356,
+          "chem2": 0.23627630519713017,
+          "chem3": 0.2917272323641331,
+          "chem4": 0.29464208804060743,
+          "chem5": 0.1824755472687684
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.00025518778796068155,
+          "log T Rp^3/(Mp Rs^2)": 0.0209371939402474,
+          "mean log abundance": 0.36357062672975093
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18285334800671343,
+          "log T Rp^3/(Mp Rs^2)": 0.4269444510230733,
+          "mean log abundance": 0.741622610015479
+        },
+        "frac_species_swap_2dex": 0.0,
+        "species_swap_counts": {}
+      },
+      "20": {
+        "threshold_rms_ppm_per_bin": 11.40815417032937,
+        "n_pairs_all": 3455893,
+        "frac_with_partner_all": 0.4623347682957711,
+        "frac_with_partner_featureless": 0.8276362700775536,
+        "frac_with_partner_feature_rich": 0.013743765656383291,
+        "n_pairs_feature_rich": 289,
+        "param_dist_pct_16_50_84": [
+          0.381,
+          0.578,
+          0.851
+        ],
+        "random_param_dist_median": 1.1266386796876562,
+        "median_abs_dU_pair": {
+          "Rs": 0.2011811793835117,
+          "Rp": 0.13581108893519647,
+          "Mp": 0.12748657441268463,
+          "T": 0.07761246137428157,
+          "chem1": 0.07880360305572201,
+          "chem2": 0.08968514409234019,
+          "chem3": 0.23388959735877912,
+          "chem4": 0.05817603701831109,
+          "chem5": 0.09472709341053251
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.2779441417476757,
+          "Rp": 0.19143706020190615,
+          "Mp": 0.2797836592109786,
+          "T": 0.2671007102690178,
+          "chem1": 0.2957712550795356,
+          "chem2": 0.23627630519713017,
+          "chem3": 0.2917272323641331,
+          "chem4": 0.29464208804060743,
+          "chem5": 0.1824755472687684
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.0005212066213507172,
+          "log T Rp^3/(Mp Rs^2)": 0.03511738867854364,
+          "mean log abundance": 0.3933300765921839
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18285334800671343,
+          "log T Rp^3/(Mp Rs^2)": 0.4269444510230733,
+          "mean log abundance": 0.741622610015479
+        },
+        "frac_species_swap_2dex": 0.020761245674740483,
+        "species_swap_counts": {
+          "chem3-chem4": 2,
+          "chem1-chem3": 2,
+          "chem3-chem5": 1,
+          "chem1-chem4": 1
+        }
+      },
+      "30": {
+        "threshold_rms_ppm_per_bin": 17.11223125549406,
+        "n_pairs_all": 5618381,
+        "frac_with_partner_all": 0.5408457837427196,
+        "frac_with_partner_featureless": 0.9284007792112324,
+        "frac_with_partner_feature_rich": 0.06492744465256933,
+        "n_pairs_feature_rich": 1662,
+        "param_dist_pct_16_50_84": [
+          0.411,
+          0.631,
+          0.88
+        ],
+        "random_param_dist_median": 1.1266386796876562,
+        "median_abs_dU_pair": {
+          "Rs": 0.2011968181529533,
+          "Rp": 0.13735782841351624,
+          "Mp": 0.1360812266930784,
+          "T": 0.10499251299794737,
+          "chem1": 0.10530465198244021,
+          "chem2": 0.10036251226353424,
+          "chem3": 0.2492762744965023,
+          "chem4": 0.09410662871158221,
+          "chem5": 0.10800310007681806
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.2779441417476757,
+          "Rp": 0.19143706020190615,
+          "Mp": 0.2797836592109786,
+          "T": 0.2671007102690178,
+          "chem1": 0.2957712550795356,
+          "chem2": 0.23627630519713017,
+          "chem3": 0.2917272323641331,
+          "chem4": 0.29464208804060743,
+          "chem5": 0.1824755472687684
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.0006694180423419682,
+          "log T Rp^3/(Mp Rs^2)": 0.04950100921064937,
+          "mean log abundance": 0.4408609920290214
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18285334800671343,
+          "log T Rp^3/(Mp Rs^2)": 0.4269444510230733,
+          "mean log abundance": 0.741622610015479
+        },
+        "frac_species_swap_2dex": 0.040312876052948254,
+        "species_swap_counts": {
+          "chem1-chem3": 23,
+          "chem3-chem4": 16,
+          "chem2-chem3": 12,
+          "chem3-chem5": 7,
+          "chem1-chem5": 4,
+          "chem4-chem5": 2,
+          "chem1-chem4": 2,
+          "chem2-chem4": 1
+        }
+      },
+      "50": {
+        "threshold_rms_ppm_per_bin": 28.52038542582343,
+        "n_pairs_all": 10253076,
+        "frac_with_partner_all": 0.6410129146619398,
+        "frac_with_partner_featureless": 0.9847281949498291,
+        "frac_with_partner_feature_rich": 0.21892983683509737,
+        "n_pairs_feature_rich": 12742,
+        "param_dist_pct_16_50_84": [
+          0.486,
+          0.716,
+          0.989
+        ],
+        "random_param_dist_median": 1.1266386796876562,
+        "median_abs_dU_pair": {
+          "Rs": 0.22035811119229737,
+          "Rp": 0.1542236204357805,
+          "Mp": 0.1555600230790044,
+          "T": 0.13472760964649283,
+          "chem1": 0.14139775285068595,
+          "chem2": 0.11191216707341262,
+          "chem3": 0.26742277856045826,
+          "chem4": 0.1369250576272541,
+          "chem5": 0.11684525463122034
+        },
+        "median_abs_dU_random": {
+          "Rs": 0.2779441417476757,
+          "Rp": 0.19143706020190615,
+          "Mp": 0.2797836592109786,
+          "T": 0.2671007102690178,
+          "chem1": 0.2957712550795356,
+          "chem2": 0.23627630519713017,
+          "chem3": 0.2917272323641331,
+          "chem4": 0.29464208804060743,
+          "chem5": 0.1824755472687684
+        },
+        "median_abs_derived_pair": {
+          "log Rp/Rs": 0.0009537132285938818,
+          "log T Rp^3/(Mp Rs^2)": 0.07404132030795396,
+          "mean log abundance": 0.5089116117570236
+        },
+        "median_abs_derived_random": {
+          "log Rp/Rs": 0.18285334800671343,
+          "log T Rp^3/(Mp Rs^2)": 0.4269444510230733,
+          "mean log abundance": 0.741622610015479
+        },
+        "frac_species_swap_2dex": 0.08954638204363523,
+        "species_swap_counts": {
+          "chem1-chem3": 319,
+          "chem3-chem4": 260,
+          "chem3-chem5": 149,
+          "chem1-chem5": 136,
+          "chem2-chem3": 120,
+          "chem1-chem4": 70,
+          "chem1-chem2": 34,
+          "chem4-chem5": 25,
+          "chem2-chem4": 23,
+          "chem2-chem5": 5
+        }
+      }
+    },
+    "sampling": {
+      "graph_k": 15,
+      "per_sigma": {
+        "10": {
+          "median_one_step_dchi2_feature_rich": 157212.46828748554,
+          "frac_one_step_below_threshold_feature_rich": 0.00013540655819096838
+        },
+        "20": {
+          "median_one_step_dchi2_feature_rich": 39303.117071871384,
+          "frac_one_step_below_threshold_feature_rich": 0.0008575748685427998
+        },
+        "30": {
+          "median_one_step_dchi2_feature_rich": 17468.052031942832,
+          "frac_one_step_below_threshold_feature_rich": 0.003610841551759157
+        },
+        "50": {
+          "median_one_step_dchi2_feature_rich": 6288.4987314994205,
+          "frac_one_step_below_threshold_feature_rich": 0.012457403353569091
+        }
+      }
+    },
+    "n_feature_rich_pairs_exported": 12742
+  },
+  "args": {
+    "codes": [
+      "pos",
+      "prt",
+      "taurex"
+    ],
+    "sigmas": [
+      10,
+      20,
+      30,
+      50
+    ],
+    "feature_cut": 210.0,
+    "k": 15,
+    "n_csv": 500,
+    "spread_sigma": 30.0,
+    "data_dir": "data",
+    "out": "runs/close_pairs",
+    "seed": 0
+  }
+}

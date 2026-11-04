@@ -136,6 +136,15 @@ def analyse_code(code, args, U, nbr, rng):
                                              for k, p in enumerate(PARAM_NAMES)}
             entry["median_abs_derived_pair"] = {k: float(np.median(np.abs(v[a] - v[b]))) for k, v in der.items()}
             entry["median_abs_derived_random"] = {k: float(np.median(np.abs(v[ra] - v[rb]))) for k, v in der.items()}
+            # species swaps: one abundance up by >= 2 dex while another drops by >= 2 dex
+            dc = P[b, 4:9] - P[a, 4:9]
+            swap = (dc.max(1) >= 2) & (dc.min(1) <= -2)
+            counts = {}
+            for u, d in zip(dc[swap].argmax(1), dc[swap].argmin(1)):
+                key = "-".join(PARAM_NAMES[4 + x] for x in sorted((u, d)))
+                counts[key] = counts.get(key, 0) + 1
+            entry["frac_species_swap_2dex"] = float(swap.mean())
+            entry["species_swap_counts"] = dict(sorted(counts.items(), key=lambda kv: -kv[1]))
         summary["per_sigma"][f"{s:g}"] = entry
 
     # ---- sampling resolution ---------------------------------------------------------------
