@@ -1,0 +1,162 @@
+{
+  "code": "prt",
+  "n_members": 4,
+  "per_sigma": {
+    "30": {
+      "n_matched_pairs": 1687,
+      "n_emulator_faithful": 1687,
+      "max_emu_chi2": 2.0,
+      "pairs": {
+        "n": 300,
+        "frac_one_basin": 1.0,
+        "frac_separate_modes": 0.0,
+        "frac_separate_modes_all_members": 0.0,
+        "frac_ambiguous": 0.0,
+        "median_minima_distance": 0.0019055468188780064,
+        "median_chi2_secondary_minimum": 0.002191905411900452,
+        "frac_separate_and_credible": 0.0,
+        "barrier_pct_50_90_99": [
+          0.0,
+          0.0,
+          0.016
+        ],
+        "frac_unconverged": 0.0,
+        "median_abs_du_minima_one_basin": {
+          "Rs": 0.0013175525489666634,
+          "Rp": 0.0008172424139074874,
+          "Mp": 0.0004433140127730467,
+          "T": 3.2610130242805013e-06,
+          "chem1": 6.309561561224086e-06,
+          "chem2": 2.5959790507318337e-05,
+          "chem3": 2.8611018578039715e-05,
+          "chem4": 9.207264646204916e-06,
+          "chem5": 3.771855271253455e-05
+        }
+      },
+      "control": {
+        "n": 100,
+        "frac_one_basin": 0.97,
+        "frac_separate_modes": 0.02,
+        "frac_separate_modes_all_members": 0.02,
+        "frac_ambiguous": 0.01,
+        "median_minima_distance": 0.01756422345471844,
+        "median_chi2_secondary_minimum": 0.002479257403506939,
+        "frac_separate_and_credible": 0.01,
+        "barrier_pct_50_90_99": [
+          0.0,
+          0.0,
+          16.411
+        ],
+        "frac_unconverged": 0.17
+      },
+      "random": {
+        "n": 100,
+        "frac_one_basin": 0.84,
+        "frac_separate_modes": 0.16,
+        "frac_separate_modes_all_members": 0.16,
+        "frac_ambiguous": 0.0,
+        "median_minima_distance": 1.4359398093307147,
+        "median_chi2_secondary_minimum": 311652.42981134326,
+        "frac_separate_and_credible": 0.0,
+        "barrier_pct_50_90_99": [
+          0.0,
+          1466.636,
+          489564.054
+        ],
+        "frac_unconverged": 0.34
+      }
+    },
+    "50": {
+      "n_matched_pairs": 13047,
+      "n_emulator_faithful": 13047,
+      "max_emu_chi2": 2.0,
+      "pairs": {
+        "n": 300,
+        "frac_one_basin": 1.0,
+        "frac_separate_modes": 0.0,
+        "frac_separate_modes_all_members": 0.0,
+        "frac_ambiguous": 0.0,
+        "median_minima_distance": 0.0012481531672397803,
+        "median_chi2_secondary_minimum": 0.0008955171652478304,
+        "frac_separate_and_credible": 0.0,
+        "barrier_pct_50_90_99": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frac_unconverged": 0.0033333333333333335,
+        "median_abs_du_minima_one_basin": {
+          "Rs": 0.0006565888115242502,
+          "Rp": 0.0004788400498565992,
+          "Mp": 0.0004461909104667705,
+          "T": 2.5650503303054073e-06,
+          "chem1": 8.80166709926744e-06,
+          "chem2": 2.7003196937311347e-05,
+          "chem3": 4.1317493582715414e-05,
+          "chem4": 6.838155404753632e-06,
+          "chem5": 4.0707334651848837e-05
+        }
+      },
+      "control": {
+        "n": 100,
+        "frac_one_basin": 1.0,
+        "frac_separate_modes": 0.0,
+        "frac_separate_modes_all_members": 0.0,
+        "frac_ambiguous": 0.0,
+        "median_minima_distance": 0.0035677915605724702,
+        "median_chi2_secondary_minimum": 0.0011008978975685412,
+        "frac_separate_and_credible": 0.0,
+        "barrier_pct_50_90_99": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "frac_unconverged": 0.1
+      },
+      "random": {
+        "n": 100,
+        "frac_one_basin": 0.75,
+        "frac_separate_modes": 0.23,
+        "frac_separate_modes_all_members": 0.23,
+        "frac_ambiguous": 0.02,
+        "median_minima_distance": 1.3823739368708674,
+        "median_chi2_secondary_minimum": 7758.320036093355,
+        "frac_separate_and_credible": 0.0,
+        "barrier_pct_50_90_99": [
+          0.0,
+          32336.92,
+          1981901.923
+        ],
+        "frac_unconverged": 0.34
+      }
+    }
+  },
+  "args": {
+    "codes": [
+      "prt"
+    ],
+    "sigmas": [
+      30,
+      50
+    ],
+    "max_pairs": 300,
+    "n_control": 100,
+    "n_random": 100,
+    "batch": 150,
+    "images": 12,
+    "iters": 120,
+    "descent_steps": 300,
+    "one_basin": 0.5,
+    "same_point": 0.02,
+    "sep": 2.0,
+    "max_emu_chi2": 2.0,
+    "noisy": false,
+    "threads": 1,
+    "seed": 0,
+    "data_dir": "data",
+    "pairs_dir": "runs/close_pairs",
+    "emulator_dir": "runs/emulator",
+    "out": "runs/mode_paths",
+    "plots_only": false
+  }
+}

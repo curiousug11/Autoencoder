@@ -52,6 +52,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.ticker
 import numpy as np
 import torch
 
@@ -181,16 +182,19 @@ def upsample(u, factor):
     return u[:, k] * (1 - w) + u[:, k + 1] * w
 
 
-def string_method(f, ua, ub, n_images, iters, lam0=1e-2):
+def string_method(f, ua, ub, n_images, iters, lam0=1e-2, init=None):
     """String method with Levenberg-Marquardt image updates.
 
     Interior images take the damped Gauss-Newton step restricted to the hyperplane
     perpendicular to the local path tangent; endpoints take the full step (free ends).
     A step is kept only if it lowers that image's chi2. Images are respaced to equal
-    arc length after every iteration.
+    arc length after every iteration. `init` ([B, n_images, 9]) replaces the straight-line start.
     """
-    t = torch.linspace(0, 1, n_images, dtype=ua.dtype).view(1, -1, 1)
-    u = (ua[:, None] * (1 - t) + ub[:, None] * t).clone()
+    if init is None:
+        t = torch.linspace(0, 1, n_images, dtype=ua.dtype).view(1, -1, 1)
+        u = (ua[:, None] * (1 - t) + ub[:, None] * t).clone()
+    else:
+        u = respace(init.clone())
     lam = torch.full(u.shape[:2], lam0, dtype=u.dtype)
     history = []
     for it in range(1, iters + 1):
@@ -248,17 +252,41 @@ def credible(r):
     return np.abs(r["chi2_a"] - r["chi2_b"]) < CHI2_95
 
 
-def run_code(code, args, rng):
-    t0 = time.time()
+def draw_sets(I, J, U, S, sigma, args, rng):
+    """Start points and data for the three test sets. All random draws for one sigma happen
+    here, in a fixed order, so refine_modes.py can replay them (including the noise)."""
+    # control: theta_i plus a small random step, clipped to the box
+    nc = min(args.n_control, len(I))
+    ci = rng.choice(I, nc, replace=False)
+    step = rng.normal(size=(nc, 9))
+    step = 0.05 * step / np.linalg.norm(step, axis=1, keepdims=True)
+    uc = np.clip(U[ci] + step, 0, 1)
+    # random: theta_i and a partner drawn uniformly from the prior box (probes the whole landscape)
+    nr = min(args.n_random, len(I))
+    ri = rng.choice(I, nr, replace=False)
+    ur = rng.uniform(size=(nr, 9))
+    sets = {"pairs": (I, U[I], U[J]), "control": (ci, U[ci], uc), "random": (ri, U[ri], ur)}
+    out = {}
+    for name, (ii, ua0, ub0) in sets.items():
+        parts = []
+        for a in range(0, len(ii), args.batch):
+            data = S[ii[a:a + args.batch]]
+            if args.noisy:
+                data = data + rng.normal(scale=sigma * 1e-6, size=data.shape)
+            parts.append(data)
+        out[name] = (ii, ua0, ub0, np.concatenate(parts))
+    return out
+
+
+def prepare(code, args):
+    """Emulator ensemble, data and the emulator error at every pair endpoint."""
     models = load_ensemble(code, args.emulator_dir)
     for m in models:
         for p in m.parameters():
             p.requires_grad_(False)
     S, P, _, valid = load_data(code, args.data_dir)
     lo, hi = P.min(0), P.max(0)
-    U = (P - lo) / (hi - lo)
     pairs = np.load(os.path.join(args.pairs_dir, f"{code}_pairs.npz"))
-    ok = valid[pairs["i"]] & valid[pairs["j"]]
     # emulator fidelity at the pair endpoints: squared error of the ensemble mean, per spectrum
     ends = np.unique(np.r_[pairs["i"], pairs["j"]])
     with torch.no_grad():
@@ -266,38 +294,39 @@ def run_code(code, args, rng):
         pe = torch.stack([m(th) for m in models]).mean(0).numpy()
     emu_err2 = np.full(len(S), np.inf)
     emu_err2[ends] = ((pe - S[ends]) ** 2).sum(1)
-    out = {"code": code, "n_members": len(models), "per_sigma": {}}
-    store = {}
+    return dict(models=models, S=S, P=P, valid=valid, lo=lo, hi=hi, U=(P - lo) / (hi - lo),
+                pairs=pairs, emu_err2=emu_err2)
+
+
+def iter_sigmas(prep, args, rng):
+    """Per sigma: the emulator-faithful matched pairs and the three test sets (start points + data)."""
+    pairs, emu_err2 = prep["pairs"], prep["emu_err2"]
+    ok = prep["valid"][pairs["i"]] & prep["valid"][pairs["j"]]
     for sigma in args.sigmas:
         s2 = (sigma * 1e-6) ** 2
         cand = ok & (pairs["sigma_min_ppm"] < sigma)
         faithful = (emu_err2[pairs["i"]] / s2 < args.max_emu_chi2) & (emu_err2[pairs["j"]] / s2 < args.max_emu_chi2)
-        n_cand, n_faith = int(cand.sum()), int((cand & faithful).sum())
         sel = np.flatnonzero(cand & faithful)
         if len(sel) > args.max_pairs:
             sel = np.sort(rng.choice(sel, args.max_pairs, replace=False))
         I, J = pairs["i"][sel], pairs["j"][sel]
-        # control: theta_i plus a small random step, clipped to the box
-        nc = min(args.n_control, len(I))
-        ci = rng.choice(I, nc, replace=False)
-        step = rng.normal(size=(nc, 9))
-        step = 0.05 * step / np.linalg.norm(step, axis=1, keepdims=True)
-        uc = np.clip(U[ci] + step, 0, 1)
-        # random: theta_i and a partner drawn uniformly from the prior box (probes the whole landscape)
-        nr = min(args.n_random, len(I))
-        ri = rng.choice(I, nr, replace=False)
-        ur = rng.uniform(size=(nr, 9))
+        sets = draw_sets(I, J, prep["U"], prep["S"], sigma, args, rng)
+        yield sigma, int(cand.sum()), int((cand & faithful).sum()), J, sets
 
+
+def run_code(code, args, rng):
+    t0 = time.time()
+    prep = prepare(code, args)
+    models, S, P, lo, hi = (prep[k] for k in ("models", "S", "P", "lo", "hi"))
+    out = {"code": code, "n_members": len(models), "per_sigma": {}}
+    store = {}
+    for sigma, n_cand, n_faith, J, sets in iter_sigmas(prep, args, rng):
         res = {}
-        sets = {"pairs": (I, U[I], U[J]), "control": (ci, U[ci], uc), "random": (ri, U[ri], ur)}
-        for name, (ii, ua0, ub0) in sets.items():
+        for name, (ii, ua0, ub0, data_all) in sets.items():
             parts = []
             for a in range(0, len(ii), args.batch):
                 sl = slice(a, a + args.batch)
-                data = S[ii[sl]]
-                if args.noisy:
-                    data = data + rng.normal(scale=sigma * 1e-6, size=data.shape)
-                parts.append(run_batch(models, lo, hi, data, torch.as_tensor(ua0[sl]),
+                parts.append(run_batch(models, lo, hi, data_all[sl], torch.as_tensor(ua0[sl]),
                                        torch.as_tensor(ub0[sl]), sigma * 1e-6, args))
             res[name] = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
             res[name]["ref"] = ii
@@ -401,17 +430,20 @@ def plots(results, args):
         one, sep, robust, _ = classify(r, args)
         cand = np.flatnonzero(robust & credible(r))
         if not len(cand):
-            axs[0, k].set_title(f"{CODE_LABEL[c]}: no robust separate modes")
+            axs[0, k].text(0.5, 0.5, f"{CODE_LABEL[c]}\nno robust, credible\nseparate modes", ha="center",
+                           va="center", transform=axs[0, k].transAxes)
+            for ax in axs[:, k]:
+                ax.set_axis_off()
             continue
         q = cand[np.argmax(r["barrier"][cand])]
         pc = r["path_chi2"][q]
         s = np.linspace(0, 1, len(pc))
-        axs[0, k].plot(s, pc, color=colors[c])
-        axs[0, k].axhline(CHI2_95, color="k", lw=0.8, ls="--")
-        axs[0, k].set_yscale("symlog", linthresh=1)
+        axs[0, k].plot(s, pc - pc[[0, -1]].min(), color=colors[c])
+        axs[0, k].axhline(args.sep, color="k", lw=0.8, ls="--", label=f"separation threshold Δχ²={args.sep:g}")
         axs[0, k].set_xlabel("position along path")
-        axs[0, k].set_ylabel("χ²")
-        axs[0, k].set_title(f"{CODE_LABEL[c]} ref #{r['ref'][q]}, σ={sigma:g} ppm: barrier Δχ²={r['barrier'][q]:.0f}",
+        axs[0, k].set_ylabel("χ² − χ² of better minimum")
+        axs[0, k].legend(fontsize=7)
+        axs[0, k].set_title(f"{CODE_LABEL[c]} ref #{r['ref'][q]}, σ={sigma:g} ppm: barrier above worse minimum Δχ²={r['barrier'][q]:.1f}",
                             fontsize=8)
         path = r["path"][q] if "path" in r else None
         if path is not None:
@@ -424,10 +456,12 @@ def plots(results, args):
         th = lo + np.stack([r["ua"][q], r["ub"][q]]) * (hi - lo)
         with torch.no_grad():
             sp = torch.stack([m(torch.as_tensor(th)) for m in models]).mean(0).numpy()
-        axs[2, k].plot(wl, S[r["ref"][q]] * 1e6, "k-", lw=1.2, label="data (true spectrum)")
+        axs[2, k].plot(wl, S[r["ref"][q]] * 1e6, "k-", lw=1.2,
+                       label="noise-free spectrum (fit used a noisy copy)" if args.noisy else "data (true spectrum)")
         axs[2, k].plot(wl, sp[0] * 1e6, "--", color=colors[c], label=f"mode a, χ²={r['chi2_a'][q]:.1f}")
         axs[2, k].plot(wl, sp[1] * 1e6, ":", color=colors[c], lw=2, label=f"mode b, χ²={r['chi2_b'][q]:.1f}")
         axs[2, k].set_xscale("log")
+        axs[2, k].xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
         axs[2, k].set_xlabel("wavelength (µm)")
         axs[2, k].set_ylabel("transit depth (ppm)")
         axs[2, k].legend(fontsize=7)

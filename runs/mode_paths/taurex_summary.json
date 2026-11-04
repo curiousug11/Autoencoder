@@ -1,0 +1,162 @@
+{
+  "code": "taurex",
+  "n_members": 4,
+  "per_sigma": {
+    "30": {
+      "n_matched_pairs": 1662,
+      "n_emulator_faithful": 1662,
+      "max_emu_chi2": 2.0,
+      "pairs": {
+        "n": 300,
+        "frac_one_basin": 1.0,
+        "frac_separate_modes": 0.0,
+        "frac_separate_modes_all_members": 0.0,
+        "frac_ambiguous": 0.0,
+        "median_minima_distance": 0.009543474809281019,
+        "median_chi2_secondary_minimum": 0.004043712423043272,
+        "frac_separate_and_credible": 0.0,
+        "barrier_pct_50_90_99": [
+          0.0,
+          0.0,
+          0.001
+        ],
+        "frac_unconverged": 0.0,
+        "median_abs_du_minima_one_basin": {
+          "Rs": 0.004885148637436748,
+          "Rp": 0.0034666805431415593,
+          "Mp": 0.002780837925054236,
+          "T": 1.814090657714651e-05,
+          "chem1": 2.0590532864517286e-05,
+          "chem2": 4.973990595213973e-05,
+          "chem3": 0.00018563077562855357,
+          "chem4": 5.3286243801686783e-05,
+          "chem5": 0.0001462520622543817
+        }
+      },
+      "control": {
+        "n": 100,
+        "frac_one_basin": 0.97,
+        "frac_separate_modes": 0.03,
+        "frac_separate_modes_all_members": 0.03,
+        "frac_ambiguous": 0.0,
+        "median_minima_distance": 0.0026900963367223803,
+        "median_chi2_secondary_minimum": 0.00406184136176849,
+        "frac_separate_and_credible": 0.03,
+        "barrier_pct_50_90_99": [
+          0.0,
+          0.0,
+          10.759
+        ],
+        "frac_unconverged": 0.13
+      },
+      "random": {
+        "n": 100,
+        "frac_one_basin": 0.73,
+        "frac_separate_modes": 0.26,
+        "frac_separate_modes_all_members": 0.26,
+        "frac_ambiguous": 0.01,
+        "median_minima_distance": 1.2664452308288048,
+        "median_chi2_secondary_minimum": 388.01355895470596,
+        "frac_separate_and_credible": 0.01,
+        "barrier_pct_50_90_99": [
+          0.0,
+          123779.946,
+          16431579.259
+        ],
+        "frac_unconverged": 0.58
+      }
+    },
+    "50": {
+      "n_matched_pairs": 12742,
+      "n_emulator_faithful": 12742,
+      "max_emu_chi2": 2.0,
+      "pairs": {
+        "n": 300,
+        "frac_one_basin": 1.0,
+        "frac_separate_modes": 0.0,
+        "frac_separate_modes_all_members": 0.0,
+        "frac_ambiguous": 0.0,
+        "median_minima_distance": 0.005238237193124334,
+        "median_chi2_secondary_minimum": 0.0019014841202560744,
+        "frac_separate_and_credible": 0.0,
+        "barrier_pct_50_90_99": [
+          0.0,
+          0.0,
+          0.027
+        ],
+        "frac_unconverged": 0.0033333333333333335,
+        "median_abs_du_minima_one_basin": {
+          "Rs": 0.003066157984039544,
+          "Rp": 0.0024338097462190122,
+          "Mp": 0.001459045911417739,
+          "T": 1.4454132094443572e-05,
+          "chem1": 3.15397543727558e-05,
+          "chem2": 6.647514551624822e-05,
+          "chem3": 0.0001626898155422385,
+          "chem4": 3.0297352160729707e-05,
+          "chem5": 9.252123847163299e-05
+        }
+      },
+      "control": {
+        "n": 100,
+        "frac_one_basin": 0.99,
+        "frac_separate_modes": 0.01,
+        "frac_separate_modes_all_members": 0.01,
+        "frac_ambiguous": 0.0,
+        "median_minima_distance": 0.0002390224749485213,
+        "median_chi2_secondary_minimum": 0.0015625093088383994,
+        "frac_separate_and_credible": 0.0,
+        "barrier_pct_50_90_99": [
+          0.0,
+          0.0,
+          0.176
+        ],
+        "frac_unconverged": 0.08
+      },
+      "random": {
+        "n": 100,
+        "frac_one_basin": 0.61,
+        "frac_separate_modes": 0.35,
+        "frac_separate_modes_all_members": 0.35,
+        "frac_ambiguous": 0.04,
+        "median_minima_distance": 1.235398399089441,
+        "median_chi2_secondary_minimum": 260.7690617051328,
+        "frac_separate_and_credible": 0.04,
+        "barrier_pct_50_90_99": [
+          0.0,
+          31727.047,
+          686935.391
+        ],
+        "frac_unconverged": 0.51
+      }
+    }
+  },
+  "args": {
+    "codes": [
+      "taurex"
+    ],
+    "sigmas": [
+      30,
+      50
+    ],
+    "max_pairs": 300,
+    "n_control": 100,
+    "n_random": 100,
+    "batch": 150,
+    "images": 12,
+    "iters": 120,
+    "descent_steps": 300,
+    "one_basin": 0.5,
+    "same_point": 0.02,
+    "sep": 2.0,
+    "max_emu_chi2": 2.0,
+    "noisy": false,
+    "threads": 1,
+    "seed": 0,
+    "data_dir": "data",
+    "pairs_dir": "runs/close_pairs",
+    "emulator_dir": "runs/emulator",
+    "out": "runs/mode_paths",
+    "plots_only": false
+  }
+}
