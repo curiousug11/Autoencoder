@@ -40,6 +40,7 @@ drawn uniformly from the prior box: it shows whether the chi2 landscape has
 separate local minima at all and whether the method can resolve them.
 
     python mode_paths.py --codes pos --threads 1                  # noiseless data, one code
+    python mode_paths.py --plots-only                             # merge per-code runs, redraw plots
     python mode_paths.py --noisy --out runs/mode_paths_noisy      # one noise draw per pair
 """
 import argparse
@@ -57,6 +58,7 @@ import torch
 from emulator import PARAM_NAMES, load_data, load_ensemble
 
 CODE_LABEL = {"pos": "POS", "prt": "petitRADTRANS", "taurex": "TauREx"}
+CODES = list(CODE_LABEL)
 CHI2_95 = 16.919
 
 
@@ -458,15 +460,43 @@ def main():
     ap.add_argument("--pairs-dir", default="runs/close_pairs")
     ap.add_argument("--emulator-dir", default="runs/emulator")
     ap.add_argument("--out", default="runs/mode_paths")
+    ap.add_argument("--plots-only", action="store_true",
+                    help="skip the runs; merge the per-code outputs already in --out and redraw the plots")
     args = ap.parse_args()
     if args.threads:
         torch.set_num_threads(args.threads)
     os.makedirs(args.out, exist_ok=True)
-    rng = np.random.default_rng(args.seed)
-    results = {c: run_code(c, args, rng) for c in args.codes}
+    if args.plots_only:
+        results = {c: load_results(c, args) for c in args.codes}
+    else:
+        results = {}
+        for c in args.codes:
+            # per-code seed so codes can run as separate parallel processes and still be reproducible
+            rng = np.random.default_rng([args.seed, CODES.index(c)])
+            results[c] = run_code(c, args, rng)
+            with open(os.path.join(args.out, f"{c}_summary.json"), "w") as f:
+                json.dump(results[c][0] | {"args": vars(args)}, f, indent=2)
     with open(os.path.join(args.out, "summary.json"), "w") as f:
         json.dump({c: r[0] for c, r in results.items()} | {"args": vars(args)}, f, indent=2)
     plots(results, args)
+
+
+def load_results(code, args):
+    """Rebuild run_code's return value from the files it wrote (for --plots-only)."""
+    with open(os.path.join(args.out, f"{code}_summary.json")) as f:
+        out = json.load(f)
+    out.pop("args", None)
+    S, P, _, _ = load_data(code, args.data_dir)
+    lo, hi = P.min(0), P.max(0)
+    store = {}
+    for sigma in args.sigmas:
+        z = np.load(os.path.join(args.out, f"{code}_sigma{sigma:g}.npz"))
+        res = {"pairs": {}, "control": {}, "random": {}}
+        for k in z.files:
+            name, key = k.split("_", 1)
+            res[name][key] = z[k]
+        store[sigma] = res
+    return out, store, (S, P, lo, hi)
 
 
 if __name__ == "__main__":
