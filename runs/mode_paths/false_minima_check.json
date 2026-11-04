@@ -1,0 +1,62 @@
+{
+ "per_code_sigma": {
+  "pos_30": {
+   "n": 6,
+   "good_fit": 6,
+   "poor_still_descending": 0,
+   "poor_plateau": 0,
+   "plateau_chi2": []
+  },
+  "pos_50": {
+   "n": 14,
+   "good_fit": 14,
+   "poor_still_descending": 0,
+   "poor_plateau": 0,
+   "plateau_chi2": []
+  },
+  "prt_30": {
+   "n": 16,
+   "good_fit": 15,
+   "poor_still_descending": 0,
+   "poor_plateau": 1,
+   "plateau_chi2": [
+    68.1
+   ]
+  },
+  "prt_50": {
+   "n": 23,
+   "good_fit": 23,
+   "poor_still_descending": 0,
+   "poor_plateau": 0,
+   "plateau_chi2": []
+  },
+  "taurex_30": {
+   "n": 25,
+   "good_fit": 22,
+   "poor_still_descending": 3,
+   "poor_plateau": 0,
+   "plateau_chi2": []
+  },
+  "taurex_50": {
+   "n": 31,
+   "good_fit": 30,
+   "poor_still_descending": 0,
+   "poor_plateau": 1,
+   "plateau_chi2": [
+    20.5
+   ]
+  }
+ },
+ "total": {
+  "n": 115,
+  "good_fit": 110,
+  "poor_still_descending": 3,
+  "poor_plateau": 2
+ },
+ "descent_steps_checkpoints": [
+  300,
+  900,
+  3000
+ ],
+ "note": "random-start secondary minima classed separate-not-credible in the noiseless first pass, descended further from the saved endpoint"
+}
