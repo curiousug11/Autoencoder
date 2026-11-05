@@ -1,0 +1,17 @@
+% Abstract (from Stage 5)
+\begin{abstract}
+Interpreting exoplanet transmission spectra requires a radiative-transfer forward model, and machine-learning retrievals inherit the one used to build their training set.
+We quantify how much this choice matters with a paired experiment.
+We compute $98{,}725$ isothermal, cloud-free spectra with each of POSEIDON, petitRADTRANS, and TauREx from identical parameters, binned onto a common 52-bin Ariel grid ($0.55$--$7.28\,\mu$m).
+Among the $43{,}885$ planets with features of at least $210\,\mathrm{ppm}$, POSEIDON spectra are $21$--$24\,\mathrm{ppm}$ shallower in the median than those of the other two codes.
+After removing this offset, the codes differ by a median of $8$--$10\,\mathrm{ppm}$ ($1.0$--$1.3\%$ of the feature height).
+The four leading principal components of these differences are predicted from the planet parameters with out-of-sample $R^2\geq0.94$.
+One-class autoencoders trained on a single code identify spectra from another code with $\mathrm{AUC}=0.962$--$0.992$ without noise.
+At $10\,\mathrm{ppm}$ of white noise per bin, the AUC falls to $0.628$, or $0.735$ with an error-weighted $\chi^2$ score.
+At a calibrated 1\% false-positive rate the autoencoders detect $4.1\%$ of other-code spectra between 10 and $50\,\mathrm{ppm}$, against $36$--$81\%$ for an oracle that knows the true parameters.
+A supervised random forest reaches a pairwise AUC of $0.945$ at $10\,\mathrm{ppm}$ ($+0.210$ over the best autoencoder score) and $0.775$ at $50\,\mathrm{ppm}$ ($+0.179$).
+Applying gradient-boosted retrievals trained on one code to spectra from another lowers $R^2$ by $0.224$ for the CO abundance and $0.172$ for the planet radius.
+It also biases the temperature by up to $45\,\mathrm{K}$ in the median and by $-330\,\mathrm{K}$ for the hottest 5\% of planets.
+Increasing the training set twenty-fold doubles the self/cross gap for CO, from $0.106$ to $0.224$.
+Under noise these biases persist while the scatter grows, so they matter little for individual planets observed at $\gtrsim30\,\mathrm{ppm}$ precision but remain a coherent shift for population studies.
+\end{abstract}
