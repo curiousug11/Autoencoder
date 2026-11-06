@@ -1,0 +1,131 @@
+% =====================================================================
+% Stage 4: Introduction and Related Work
+% Citation keys are placeholders: \cite{TODO_author_topic}. The comment
+% after each key says which paper belongs there. "Candidate" entries are
+% suggestions to check against the published record before use.
+% =====================================================================
+
+\section{Introduction}
+\label{sec:intro}
+
+% --- Context ---------------------------------------------------------
+Transmission spectroscopy constrains the composition and thermal structure of exoplanet atmospheres by measuring the wavelength dependence of the transit depth~\cite{TODO_seager_sasselov_2000_transmission}% [foundational paper proposing transmission spectroscopy of exoplanet atmospheres; candidate: Seager & Sasselov 2000, ApJ; VERIFY]
+.
+The James Webb Space Telescope now delivers transmission spectra with per-bin precision of tens of parts per million~\cite{TODO_jwst_ers_transiting_2023}% [JWST Transiting Exoplanet Community ERS results, e.g. the CO2 detection in WASP-39b; VERIFY]
+, and the Ariel mission will observe the atmospheres of about a thousand planets with a common instrument and a common data-reduction pipeline~\cite{TODO_tinetti_ariel_2018}% [Ariel mission paper; candidate: Tinetti et al. 2018, Experimental Astronomy; VERIFY]
+.
+Every physical interpretation of these data passes through a forward model, a radiative-transfer code that maps atmospheric parameters to a spectrum.
+Several independent codes are in common use, including POSEIDON~\cite{TODO_macdonald_poseidon}% [POSEIDON code papers; candidates: MacDonald & Madhusudhan 2017, MNRAS; MacDonald 2023, JOSS; VERIFY]
+, petitRADTRANS~\cite{TODO_molliere_petitradtrans}% [petitRADTRANS code paper; candidate: Molliere et al. 2019, A&A; VERIFY]
+, and TauREx~\cite{TODO_alrefaie_taurex3}% [TauREx 3 code paper; candidate: Al-Refaie et al. 2021, ApJ; VERIFY]
+.
+These codes differ in opacity data, opacity treatment (line-by-line cross-sections or correlated-$k$ tables), reference-pressure conventions, and numerical integration schemes.
+Machine-learning retrievals, trained on large grids of simulated spectra, are increasingly used to amortise the cost of Bayesian inference~\cite{TODO_marquez_neila_2018_hela,TODO_ml_retrieval_review}% [supervised random-forest retrieval (candidate: Marquez-Neila et al. 2018, Nature Astronomy); plus a review or representative set of deep-learning retrievals; VERIFY]
+.
+Each such retrieval inherits the forward model used to generate its training set.
+
+% --- Gap -------------------------------------------------------------
+How much the choice of forward model matters remains poorly quantified at the population level.
+Published inter-code comparisons have mostly examined retrieval outcomes on a small number of benchmark spectra, or forward-model agreement for a few reference atmospheres~\cite{TODO_barstow_2020_retrieval_comparison,TODO_baudino_2017_model_comparison}% [comparisons of retrieval codes on common spectra (candidate: Barstow et al. 2020, MNRAS) and of forward models for JWST-like spectra (candidate: Baudino et al. 2017, ApJ); VERIFY]
+[TODO: VERIFY this characterisation of the literature].
+Three questions remain open.
+First, what are the amplitude, spectral shape, and parameter dependence of the differences between codes across a broad prior?
+Second, can a single observed spectrum reveal which code best describes it, given realistic noise?
+Third, how large are the biases incurred when a data-driven retrieval trained on one code is applied to spectra from another?
+The third question bears directly on ML retrievals, which are usually trained on one code and validated on spectra from that same code~\cite{TODO_ml_retrieval_single_code_validation}% [representative ML-retrieval papers whose training and test sets come from the same forward model; VERIFY]
+, so their reported accuracy contains no forward-model uncertainty.
+
+% --- Approach --------------------------------------------------------
+We answer these questions with a paired experiment.
+We compute $98{,}725$ cloud-free, isothermal transmission spectra with each of POSEIDON, petitRADTRANS, and TauREx, using identical parameters for every planet, and bin them onto a common 52-bin Ariel grid from $0.55$ to $7.28\,\mu$m.
+Because every planet exists in all three codes, any difference between the codes' spectra or retrievals can be attributed to the code alone.
+We decompose the paired differences into an offset and a shape residual and identify their spectral structure with principal component analysis.
+We measure detectability with one-class autoencoders trained on a single code and compare them with a supervised three-class classifier and an oracle that knows the true parameters.
+Finally, we quantify the retrieval error caused by code mismatch with gradient-boosted regressors, as a function of training-set size and observational noise.
+
+% --- Contributions ---------------------------------------------------
+Our contributions are as follows.
+\begin{itemize}
+  \item \textbf{A population-scale map of inter-code systematics.}
+  Over $43{,}885$ planets with features of at least $210\,\mathrm{ppm}$, POSEIDON spectra are shallower than those of petitRADTRANS and TauREx by a median of $21$--$24\,\mathrm{ppm}$, and this offset scales with feature height (Spearman $\rho_{\mathrm{S}}=-0.89$ to $-0.96$).
+  After the offset is removed, the codes differ by a median of $8$--$10\,\mathrm{ppm}$ ($1.0$--$1.3\%$ of the feature height), and by $75$--$91\,\mathrm{ppm}$ at the 90th percentile.
+  The leading four principal components of the relative residuals are predicted from the nine planet parameters with out-of-sample $R^2\geq0.94$, so the systematics are low-dimensional and nearly deterministic.
+
+  \item \textbf{Detectability limits from a single spectrum.}
+  Noise-free one-class autoencoders identify the generating code with $\mathrm{AUC}=0.962$--$0.992$.
+  Under white noise of $10$--$50\,\mathrm{ppm}$ per bin, at a calibrated 1\% false-positive rate, they flag only $4.1$--$4.2\%$ of other-code spectra, while an oracle that knows the true parameters flags $36$--$81\%$.
+  A supervised random forest reaches a pairwise AUC of $0.945$, $0.886$, and $0.775$ at $10$, $20$, and $50\,\mathrm{ppm}$, against $0.735$, $0.669$, and $0.596$ for the best autoencoder score.
+  The limiting factor is the autoencoders' rare large reconstruction errors (99th percentile $85$--$135\,\mathrm{ppm}$), not the information content of the data.
+
+  \item \textbf{Retrieval bias from code mismatch, which more training data does not remove.}
+  Applying a retrieval trained on one code to spectra from another lowers $R^2$ by up to $0.224$ (CO abundance) and $0.172$ (planet radius).
+  It also introduces median temperature biases of up to $45\,\mathrm{K}$, which reach $-330\,\mathrm{K}$ for the hottest 5\% of planets.
+  Increasing the training set from 5\% to 100\% doubles the self/cross gap for CO, from $0.106$ to $0.224$, because a more accurate emulator of one code is a more specialised one.
+
+  \item \textbf{The interplay of noise, bias, and planet type.}
+  The code-induced biases stay nearly constant under noise while the scatter grows: the median bias-to-scatter ratio falls from $0.10$ without noise to $0.08$ at $50\,\mathrm{ppm}$, and the ratio for temperature reaches $0.72$ without noise and $0.39$ at $50\,\mathrm{ppm}$.
+  For individual planets the systematics are therefore secondary beyond about $30\,\mathrm{ppm}$, but for population studies they remain a coherent shift.
+  The same cool and low-gravity planets are the hardest to reconstruct in all three codes (median $T$ of $770\,\mathrm{K}$, against $1940\,\mathrm{K}$ for the remaining planets): POSEIDON and petitRADTRANS share 479 of their 658 worst-reconstructed planets, against 33 expected by chance.
+  Under noise, the low-gravity planets are also where the code differences are most detectable.
+\end{itemize}
+We release the paired spectra, the trained models, and the analysis code [TODO: VERIFY repository URL and archive DOI].
+
+Section~\ref{sec:related} reviews related work.
+Section~\ref{sec:method} formalises the problem and the methods, and Section~\ref{sec:setup} describes the experimental setup.
+Section~\ref{sec:results} presents the results, and Section~\ref{sec:conclusion} discusses limitations and concludes.
+
+% =====================================================================
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Forward models for transmission spectra.}
+Transmission spectra are computed by integrating the slant optical depth through a model atmosphere, given a pressure--temperature profile, a chemical composition, and opacity data~\cite{TODO_brown_2001_transmission_model,TODO_benneke_seager_transmission_scaleheight}% [classic formulations of transmission-spectrum modelling (candidate: Brown 2001, ApJ) and of its dependence on scale height and reference pressure (candidate: Benneke & Seager 2012, ApJ); VERIFY]
+.
+Open-source codes implement this calculation with different design choices.
+POSEIDON~\cite{TODO_macdonald_poseidon} and TauREx~\cite{TODO_alrefaie_taurex3} compute spectra from cross-sections tabulated at high resolution.
+petitRADTRANS~\cite{TODO_molliere_petitradtrans} offers both line-by-line and correlated-$k$ modes.
+Other widely used frameworks include NEMESIS, CHIMERA, PLATON, and ATMO~\cite{TODO_other_forward_model_codes}% [code papers for NEMESIS (Irwin et al.), CHIMERA (Line et al.), PLATON (Zhang et al.), ATMO (Tremblin et al. / Goyal et al.); VERIFY each]
+.
+The analytic dependence of the transit depth on the reference pressure and the scale height~\cite{TODO_heng_kitzmann_2017_reference_pressure}% [analytic transmission-spectrum theory and the reference-pressure degeneracy; candidate: Heng & Kitzmann 2017, MNRAS; VERIFY]
+is directly relevant to the depth offset we find between POSEIDON and the other two codes.
+
+\paragraph{Inter-code comparisons and opacity uncertainty.}
+Disagreements between codes are recognised as a source of systematic error in atmospheric characterisation.
+Comparisons of retrieval frameworks on shared synthetic spectra~\cite{TODO_barstow_2020_retrieval_comparison} and of forward models for JWST-quality data~\cite{TODO_baudino_2017_model_comparison} have shown that codes can disagree beyond the expected observational uncertainties.
+Uncertainties in line lists, broadening parameters, and continuum opacities propagate into retrieved abundances~\cite{TODO_niraula_2022_opacity_challenge}% [opacity precision as a limiting systematic for JWST-era retrievals; candidate: Niraula et al. 2022, Nature Astronomy; VERIFY]
+.
+The correlated-$k$ approximation introduces its own band-dependent errors relative to line-by-line calculations~\cite{TODO_lacis_oinas_1991_correlated_k,TODO_correlated_k_vs_line_by_line_accuracy}% [the correlated-k method (candidate: Lacis & Oinas 1991, JGR) and an accuracy study of correlated-k versus line-by-line spectra for exoplanets; VERIFY]
+.
+These studies have typically examined a small number of reference atmospheres [TODO: VERIFY].
+Our paired design measures the full distribution of inter-code differences over a nine-dimensional prior, relates each component of that distribution to the planet parameters, and connects it quantitatively to detectability and retrieval bias.
+
+\paragraph{Machine-learning retrievals.}
+Supervised regression from spectra to parameters was introduced with random forests~\cite{TODO_marquez_neila_2018_hela} and extended to deep networks~\cite{TODO_cobb_2019_plannet,TODO_yip_2021_interpretable_dl_retrieval}% [Bayesian/ensemble neural retrieval (candidate: Cobb et al. 2019, AJ, plan-net) and interpretability of deep retrievals (candidate: Yip et al. 2021, AJ); VERIFY]
+, generative models~\cite{TODO_zingales_waldmann_2018_exogan}% [GAN-based retrieval; candidate: Zingales & Waldmann 2018, AJ, ExoGAN; VERIFY]
+, normalising flows~\cite{TODO_ardevol_martinez_2022_flows,TODO_vasist_2023_npe}% [conditional invertible networks for retrieval (candidate: Ardevol Martinez et al. 2022, A&A) and neural posterior estimation for exoplanet atmospheres (candidate: Vasist et al. 2023, A&A); VERIFY]
+, and community benchmarks for Ariel~\cite{TODO_ariel_data_challenge}% [Ariel ML data challenge description; candidate: Changeat & Yip 2023, RAS Techniques and Instruments; VERIFY]
+.
+These works train and test on spectra from the same forward model, and therefore measure the emulation error of a retrieval but not its sensitivity to the forward model.
+We measure that sensitivity directly, and show that the self/cross gap grows with training-set size.
+
+\paragraph{Model misspecification in simulation-based inference.}
+Amortised and simulation-based inference relies on the simulator being a faithful description of the data~\cite{TODO_cranmer_2020_sbi_frontier}% [review of simulation-based inference; candidate: Cranmer, Brehmer & Louppe 2020, PNAS; VERIFY]
+.
+When it is not, posterior estimators can be confidently wrong~\cite{TODO_hermans_2022_sbi_trust_crisis}% [calibration failures of neural SBI; candidate: Hermans et al. 2022, TMLR; VERIFY]
+, which has motivated methods that detect misspecification from summary statistics or learned embeddings~\cite{TODO_schmitt_2023_misspecification_detection}% [detecting model misspecification in amortised Bayesian inference; candidate: Schmitt et al. 2023/2024; VERIFY]
+.
+The machine-learning literature treats the same problem as dataset shift~\cite{TODO_quinonero_candela_2009_dataset_shift,TODO_ben_david_2010_domain_adaptation}% [dataset-shift monograph (candidate: Quinonero-Candela et al. 2009, MIT Press) and domain-adaptation theory (candidate: Ben-David et al. 2010, Machine Learning); VERIFY]
+.
+Code mismatch is a concrete, physically motivated instance of simulator misspecification.
+Here the misspecification is fully known, because the alternative simulators are available, which allows the misspecification bias to be measured exactly.
+
+\paragraph{Autoencoders and one-class anomaly detection.}
+Reconstruction-based anomaly detection with autoencoders assigns high scores to inputs that lie off the learned data manifold~\cite{TODO_sakurada_yairi_2014_ae_anomaly,TODO_ruff_2021_unifying_anomaly_review}% [early AE anomaly detection (candidate: Sakurada & Yairi 2014) and a unifying review of deep and shallow anomaly detection (candidate: Ruff et al. 2021, Proc. IEEE); VERIFY]
+.
+Denoising autoencoders learn representations that are robust to input corruption~\cite{TODO_vincent_denoising_ae}% [candidate: Vincent et al. 2008, ICML; VERIFY]
+.
+In astronomy, autoencoders have been used to compress and model galaxy and stellar spectra and to flag unusual objects~\cite{TODO_portillo_2020_sdss_vae,TODO_astro_spectra_anomaly_detection}% [VAE compression of SDSS spectra (candidate: Portillo et al. 2020, AJ) and an autoencoder/anomaly-detection application to astronomical spectra; VERIFY]
+.
+Reconstruction-based detectors are sensitive to the tails of the nominal error distribution, and are generally preferred when the anomalous class is unknown, whereas supervised detectors are preferable when examples of it are available~\cite{TODO_one_class_vs_supervised_tradeoff}% [study comparing one-class and supervised detection when anomaly classes are known; VERIFY]
+.
+Our results confirm both effects in a physical setting: the nominal error tail sets the detection limit under noise, and a classifier given examples of the alternative codes performs far better.

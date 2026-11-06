@@ -1,0 +1,38 @@
+\documentclass[11pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage[hyphens]{url}
+\usepackage[hidelinks]{hyperref}
+
+% Draft citations: every key is a placeholder to be replaced with a real
+% reference, so print the key itself in red instead of an unresolved "[?]".
+\makeatletter\g@addto@macro\UrlBreaks{\do\_\do\,}\makeatother
+\renewcommand{\cite}[1]{\textcolor{red}{[\nolinkurl{#1}]}}
+% Make [TODO: ...] notes stand out in the draft.
+\newcommand{\todo}[1]{\textcolor{red}{#1}}
+
+\title{Same Planet, Three Codes: Inter-Code Systematics in Exoplanet
+Transmission Spectra and Their Effect on Machine-Learning Retrievals\\[4pt]
+\large\textcolor{red}{Draft --- working title (option 1 of 5)}}
+\author{\textcolor{red}{[TODO: authors and affiliations]}}
+\date{\today}
+
+\setlength{\emergencystretch}{3em}
+
+\begin{document}
+\maketitle
+\input{abstract}
+
+\input{stage4_intro_related}
+\input{stage2_methodology_setup}
+\input{stage3_results}
+\input{stage5_abstract_conclusion}
+
+\end{document}
