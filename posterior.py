@@ -36,6 +36,7 @@ Each posterior's marginal widths are compared with that prediction; the median |
 the 9 parameters is tested against gamma_N and gamma_T.
 
     python posterior.py --validate        # sampler checks (~15 min)
+    python posterior.py --controls        # pipeline controls with known bimodal / unimodal data
     python posterior.py                   # all retrievals (~3 h on 4 cores); writes runs/posterior/
     python posterior.py --plots-only
 """
@@ -630,6 +631,45 @@ def validate(a):
         json.dump(out, f, indent=1)
 
 
+def controls(a):
+    """Positive and negative controls for the whole pipeline. Step 4 built noise-free data placed at
+    t x rho_c along a planet's most curved data-constrained normal; for t > 1 the chi^2 minimum
+    splits in two (a pitchfork), for t < 1 it does not. Cases whose split has a barrier >= 2 at
+    30 ppm are positive controls; the same planets at t = 0.5 are negative controls."""
+    import json as _json
+    rows_out = []
+    for code in a.codes:
+        with open(os.path.join(a.curvature_dir, "summary.json")) as f:
+            val = _json.load(f)[code]["validation"]
+        z = np.load(os.path.join(a.curvature_dir, f"{code}_curvature.npz"))
+        pos_rows = [v for v in val if v["kind"].startswith("data") and v["t"] >= 1.5 and v["delta_chi2_at_30ppm"] >= 2]
+        planets = sorted({v["point"] for v in pos_rows})
+        cases = [(v["point"], v["t"], v["rho_c_ppm"], "positive") for v in pos_rows]
+        cases += [(q, 0.5, next(v["rho_c_ppm"] for v in pos_rows if v["point"] == q), "negative") for q in planets]
+        if not cases:
+            continue
+        models = frozen_ensemble(code, a.emulator_dir)
+        lo, hi = box(a.data_dir)
+        theta0 = z["theta"][[c[0] for c in cases]]
+        with torch.no_grad():
+            S0 = torch.stack([m(torch.as_tensor(theta0)) for m in models]).mean(0).numpy() * 1e6
+        key = f"nstar_dc_{a.sigmas[0]:g}"
+        data = np.stack([S0[i] + t * rho * z[key][q] for i, (q, t, rho, _) in enumerate(cases)])
+        s = a.sigmas[0]
+        like = EmuLike(models, lo, hi, data, np.full(len(data), s))
+        res = smc(like, len(data), a.n_particles, seed=11, n_mcmc=a.n_mcmc)
+        modes = find_modes(models, lo, hi, data, s, res, a, seed=11)
+        for (q, t, rho, kind), m in zip(cases, modes):
+            rows_out.append({"code": code, "point": int(q), "t": t, "rho_c_ppm": rho, "control": kind,
+                             "multimodal": bool(m["multimodal"]), "multimodal_smc": bool(m["multimodal_smc"]),
+                             "multimodal_is": bool(m["multimodal_is"]), "smc_weight_separate": m["weight_separate"],
+                             "mass_fraction_separate": m["mass_fraction_separate"], "max_barrier": m["max_barrier"],
+                             "separate_modes": m["separate"], "is_ess": m["is_ess"]})
+            print("control", _json.dumps({k: v for k, v in rows_out[-1].items() if k != "separate_modes"}), flush=True)
+    with open(os.path.join(a.out, "controls.json"), "w") as f:
+        _json.dump(rows_out, f, indent=1)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--codes", nargs="+", default=["prt", "pos", "taurex"])
@@ -660,6 +700,7 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--threads", type=int, default=0)
     ap.add_argument("--validate", action="store_true")
+    ap.add_argument("--controls", action="store_true", help="positive/negative controls from the step-4 focal validation")
     ap.add_argument("--plots-only", action="store_true")
     ap.add_argument("--data-dir", default="data")
     ap.add_argument("--emulator-dir", default="runs/emulator")
@@ -671,6 +712,9 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     if a.validate:
         validate(a)
+        return
+    if a.controls:
+        controls(a)
         return
     rows_path = os.path.join(a.out, "runs.json")
     if a.plots_only:
