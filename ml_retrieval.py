@@ -10,6 +10,9 @@ by the differences between the codes (the code systematics).
 Data: planets passing the 210 ppm cut in all codes, the shared train/val/test split (seed 42)
 of the anomaly experiment. Features: the z-normalised spectrum (52 bins) plus log10 of the
 spectrum's mean depth and std, so the absolute depth (which carries Rp/Rs) is not thrown away.
+With --pooled, a single model per parameter is trained on the train planets of all codes
+together (each planet appears once per code) and tested on every code's test spectra.
+
 Optional white noise is added to the raw spectra before computing the features: --noise-ppm for
 the train/val spectra, --test-noise-ppm for the test spectra (default: same as --noise-ppm), so a
 model trained on noiseless spectra can be tested on noisy ones. With --models-dir, trained models
@@ -27,6 +30,7 @@ Outputs (in --out):
 Usage:
     python ml_retrieval.py
     python ml_retrieval.py --noise-ppm 20 --out runs/retrieval_20ppm
+    python ml_retrieval.py --pooled --models-dir runs/retrieval_models --out runs/retrieval_pooled
     python ml_retrieval.py --test-noise-ppm 10 --models-dir runs/retrieval_models --train-fracs \
         --out runs/retrieval_test10ppm        # noiseless-trained models, 10 ppm test spectra
 """
@@ -47,6 +51,7 @@ from data import DATA_DIR, DATASETS, load_raw, prepare_splits, znormalise
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
+LABELS = {**LABELS, "pooled": "pooled (all codes)"}
 PARAMS = ["Rs", "Rp", "Mp", "T", "chem1", "chem2", "chem3", "chem4", "chem5"]
 UNITS = ["R☉", "R_J", "M_J", "K", "log VMR", "log VMR", "log VMR", "log VMR", "log VMR"]
 
@@ -57,6 +62,8 @@ def parse_args():
     p.add_argument("--out", default="runs/retrieval")
     p.add_argument("--datasets", nargs="+", default=list(DATASETS), choices=DATASETS)
     p.add_argument("--train-codes", nargs="+", default=None, choices=DATASETS, help="default: all")
+    p.add_argument("--pooled", action="store_true",
+                   help="train one model on the spectra of all --datasets together instead of one per code")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--noise-ppm", type=float, default=0.0, help="white noise on train/val spectra (ppm)")
     p.add_argument("--test-noise-ppm", type=float, default=None,
@@ -117,7 +124,7 @@ def main():
     rng = np.random.default_rng(args.seed)
     noise_rng = np.random.default_rng(args.seed + 1)
     test_noise = args.noise_ppm if args.test_noise_ppm is None else args.test_noise_ppm
-    train_codes = args.train_codes or args.datasets
+    train_codes = ["pooled"] if args.pooled else (args.train_codes or args.datasets)
     models_dir = Path(args.models_dir) if args.models_dir else None
     if models_dir:
         models_dir.mkdir(parents=True, exist_ok=True)
@@ -136,6 +143,15 @@ def main():
     prior_range = np.ptp(np.concatenate([y["train"], y["val"], y["test"]]), 0)
     n_tr = len(y["train"])
     subsets = {f: np.sort(rng.choice(n_tr, int(round(f * n_tr)), replace=False)) for f in args.train_fracs}
+    # Training/validation targets per training set; the pooled set stacks all codes in order.
+    y_fit = {(a, part): y[part] for a in args.datasets for part in ("train", "val")}
+    if args.pooled:
+        k = len(args.datasets)
+        for part in ("train", "val"):
+            X[("pooled", part)] = np.concatenate([X[(d, part)] for d in args.datasets])
+            y_fit[("pooled", part)] = np.tile(y[part], (k, 1))
+        # Learning-curve subsets select planets, keeping all codes' spectra of each selected planet.
+        subsets = {f: np.concatenate([idx + i * n_tr for i in range(k)]) for f, idx in subsets.items()}
 
     preds, curves, best_iter, learning = {}, {}, {}, {}
     for a in train_codes:
@@ -147,8 +163,8 @@ def main():
                 model.load_model(path)
             else:
                 model = make_model(args)
-                model.fit(X[(a, "train")], y["train"][:, j],
-                          eval_set=[(X[(a, "train")], y["train"][:, j]), (X[(a, "val")], y["val"][:, j])],
+                ytr, yva = y_fit[(a, "train")][:, j], y_fit[(a, "val")][:, j]
+                model.fit(X[(a, "train")], ytr, eval_set=[(X[(a, "train")], ytr), (X[(a, "val")], yva)],
                           verbose=False)
                 ev = model.evals_result()
                 curves[(a, name)] = (ev["validation_0"]["rmse"], ev["validation_1"]["rmse"])
@@ -160,7 +176,8 @@ def main():
             learning[(a, name, 1.0)] = {b: r2(y["test"][:, j], preds[(a, b, name)]) for b in args.datasets}
             for f, idx in (subsets.items() if (a, name) in curves else ()):
                 m = make_model(args)
-                m.fit(X[(a, "train")][idx], y["train"][idx, j], eval_set=[(X[(a, "val")], y["val"][:, j])],
+                m.fit(X[(a, "train")][idx], y_fit[(a, "train")][idx, j],
+                      eval_set=[(X[(a, "val")], y_fit[(a, "val")][:, j])],
                       verbose=False)
                 learning[(a, name, f)] = {b: r2(y["test"][:, j], m.predict(X[(b, "test")])) for b in args.datasets}
             print(f"train {LABELS[a]:<14} {name:<6} best round {best_iter[(a, name)]:>4}  R² "
@@ -193,21 +210,22 @@ def summarise(args, train_codes, y, preds, prior_range, best_iter, learning, n_t
     for a in train_codes:
         ra = {}
         for j, name in enumerate(PARAMS):
-            self_pred = preds[(a, a, name)]
+            self_pred = preds.get((a, a, name))  # None for the pooled model
             entry = {"best_round": best_iter[(a, name)], "tested_on": {},
                      "learning_curve": {f"{f:g}": v for (aa, n, f), v in learning.items() if aa == a and n == name}}
             for b in args.datasets:
                 p = preds[(a, b, name)]
                 err = p - y[:, j]
-                shift = p - self_pred  # change caused only by the code, same planets
                 entry["tested_on"][b] = {
                     "r2": r2(y[:, j], p), "rmse": float(np.sqrt((err**2).mean())),
                     "median_bias": float(np.median(err)), "mean_bias": float(err.mean()),
                     "spread_16_84": float((np.percentile(err, 84) - np.percentile(err, 16)) / 2),
                     "median_bias_pct_range": float(100 * np.median(err) / prior_range[j]),
-                    "median_shift_vs_self": float(np.median(shift)),
-                    "abs_shift_vs_self_median": float(np.median(np.abs(shift))),
                 }
+                if self_pred is not None:
+                    shift = p - self_pred  # change caused only by the code, same planets
+                    entry["tested_on"][b]["median_shift_vs_self"] = float(np.median(shift))
+                    entry["tested_on"][b]["abs_shift_vs_self_median"] = float(np.median(np.abs(shift)))
             ra[name] = entry
         res["train_codes"][a] = ra
     return res
