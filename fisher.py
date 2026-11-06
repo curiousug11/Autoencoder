@@ -13,8 +13,9 @@ emulator ensembles at the same test-set planets for all three codes and reports:
   Gaussian posterior width as a fraction of its prior width;
 - how the eigenvalues change with feature height (the featureless boundary);
 - the widths of the surface along each eigendirection: the arc length in data space of the
-  straight line through the planet along that direction, from box face to box face. Sloppy
-  models are typically "hyper-ribbons" whose widths fall off geometrically;
+  straight line through the planet along that direction, from box face to box face (or to where
+  the emulator leaves its training range, which is recorded). Sloppy models are typically
+  "hyper-ribbons" whose widths fall off geometrically (Transtrum, Machta & Sethna 2010, 2011);
 - agreement between ensemble members and between the three codes.
 
     python fisher.py                    # ~10 min on 4 cores; writes runs/fisher/
@@ -42,12 +43,18 @@ def pct(x, axis=0):
 
 
 @torch.no_grad()
-def widths(models, theta, lo, hi, V, n_line=33, chunk=200):
+def widths(models, theta, lo, hi, V, logy_max, n_line=33, chunk=200):
     """Arc length (ppm) of S along the line through each point in each unit-box eigendirection,
-    clipped to the box. V: [n, 9, 9] eigenvectors in columns. Returns arc [n, 9], chord [n, 9], span [n, 9]."""
+    from box face to box face. V: [n, 9, 9] eigenvectors in columns.
+
+    The emulator is only trusted where every member predicts log y within the training range
+    (<= logy_max): towards some box corners (tiny Mp with large Rp and T) the training data are
+    sparse and the networks extrapolate wildly. The arc is therefore taken over the contiguous
+    stretch around the planet that stays inside that domain. Returns arc, chord, linear-model
+    width sqrt(lam) x parameter span (all [n, 9]) and whether the domain cut the line short."""
     lo_t, span_t = torch.as_tensor(lo), torch.as_tensor(hi - lo)
     u0 = (theta - lo) / (hi - lo)
-    arc, chord, tspan = [], [], []
+    arc, chord, tspan, cut = [], [], [], []
     for a in range(0, len(u0), chunk):
         u, v = u0[a:a + chunk, :, None], V[a:a + chunk]  # [b, 9, 1], [b, 9(coord), 9(k)]
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -57,12 +64,27 @@ def widths(models, theta, lo, hi, V, n_line=33, chunk=200):
         pts = u[:, None, :, 0][:, :, None, :] + t[..., None] * np.swapaxes(v, 1, 2)[:, :, None, :]
         pts = np.clip(pts, 0, 1)
         th = torch.as_tensor(lo + pts.reshape(-1, 9) * (hi - lo))
-        s = torch.stack([m(th) for m in models]).mean(0).numpy().reshape(*pts.shape[:3], -1) * 1e6
-        seg = np.linalg.norm(np.diff(s, axis=2), axis=-1)
-        arc.append(seg.sum(-1))
-        chord.append(np.linalg.norm(s[:, :, -1] - s[:, :, 0], axis=-1))
-        tspan.append(up - dn)
-    return np.concatenate(arc), np.concatenate(chord), np.concatenate(tspan)
+        ly = torch.stack([m.log_y(th) for m in models])  # [M, P, 52]
+        ok = (torch.isfinite(ly).all(-1) & (ly.amax(-1) <= logy_max)).all(0).numpy()
+        ok = ok.reshape(pts.shape[:3])
+        yv = torch.exp(ly.clamp(max=logy_max))
+        k_ = 0.10276 * th[:, 1:2] / th[:, 0:1]
+        s = ((k_ * (1 + yv)) ** 2).mean(0).numpy().reshape(*pts.shape[:3], -1) * 1e6
+        # contiguous trusted stretch around the planet (grid point nearest t = 0)
+        L = n_line
+        idx = np.arange(L)
+        c = np.abs(t).argmin(-1)[..., None]  # [b, k, 1]
+        bad = ~ok
+        left = np.where(bad & (idx < c), idx, -1).max(-1) + 1
+        right = np.where(bad & (idx > c), idx, L).min(-1) - 1
+        seg = np.linalg.norm(np.diff(s, axis=2), axis=-1)  # [b, k, L-1]
+        use = (idx[:-1] >= left[..., None]) & (idx[1:] <= right[..., None])
+        arc.append((seg * use).sum(-1))
+        bi, ki = np.indices(left.shape)
+        chord.append(np.linalg.norm(s[bi, ki, right] - s[bi, ki, left], axis=-1))
+        tspan.append(t[bi, ki, right] - t[bi, ki, left])
+        cut.append((left > 0) | (right < L - 1))
+    return np.concatenate(arc), np.concatenate(chord), np.concatenate(tspan), np.concatenate(cut)
 
 
 def analyse(code, idx, lo, hi, args):
@@ -80,10 +102,13 @@ def analyse(code, idx, lo, hi, args):
     V_u_m = eigh_desc(np.swapaxes(Jm, -1, -2) @ Jm)[1]
     feat = S[idx].max(1) - S[idx].min(1)
     print(f"[{code}] derivatives {time.time() - t0:.0f}s", flush=True)
-    arc, chord, tspan = widths(models, theta, lo, hi, V_u)
+    _, _, y, valid = load_data(code, args.data_dir)
+    logy_max = float(np.log(y[valid]).max()) + 0.5  # training maximum plus a small margin
+    arc, chord, tspan, cut = widths(models, theta, lo, hi, V_u, logy_max)
     print(f"[{code}] widths {time.time() - t0:.0f}s", flush=True)
     return dict(theta=theta, feat_ppm=feat * 1e6, lam_log=lam_log, V_log=V_log, lam_log_members=lam_log_m,
-                lam_u=lam_u, V_u=V_u, V_u_members=V_u_m, width_arc=arc, width_chord=chord, width_tspan=tspan)
+                lam_u=lam_u, V_u=V_u, V_u_members=V_u_m, width_arc=arc, width_chord=chord, width_tspan=tspan,
+                width_cut_by_emulator_domain=cut, logy_max=logy_max)
 
 
 def summarise(r, args):
@@ -96,9 +121,9 @@ def summarise(r, args):
                                            "units": "ppm^2 per (dex)^2; 1-sigma width along v_k is sigma/sqrt(lam_k) dex"}
     out["decades_spanned_median"] = float(np.median(L[:, 0] - L[:, -1]))
     out["consecutive_log10_gap_median"] = np.median(-np.diff(L, axis=1), 0).round(3).tolist()
-    # eigenvector composition: median squared component of parameter j in eigenvector k
-    comp = np.median(V**2, axis=0).T  # [k, j]
-    out["eigenvector_composition_median_sq"] = {f"v{k + 1}": dict(zip(PARAM_NAMES, comp[k].round(3).tolist()))
+    # eigenvector composition: mean squared component of parameter j in eigenvector k (rows sum to 1)
+    comp = np.mean(V**2, axis=0).T  # [k, j]
+    out["eigenvector_composition_mean_sq"] = {f"v{k + 1}": dict(zip(PARAM_NAMES, comp[k].round(3).tolist()))
                                                 for k in range(9)}
     dirs = {}
     for name, d in DIRECTIONS.items():
@@ -136,6 +161,7 @@ def summarise(r, args):
                             "p84": pct(r["width_arc"])[2].round(2).tolist()}
     lin = np.sqrt(lu) * r["width_tspan"]
     out["width_arc_over_linear_median"] = np.median(r["width_arc"] / lin, 0).round(3).tolist()
+    out["frac_width_cut_by_emulator_domain"] = r["width_cut_by_emulator_domain"].mean(0).round(3).tolist()
     out["n_widths_above_2sigma_median"] = {f"{s:g}": float(np.median((r["width_arc"] > 2 * s).sum(1)))
                                            for s in args.sigmas}
     # robustness: members vs ensemble mean
@@ -175,14 +201,13 @@ def plots(res, summ, args):
         ax.plot(x, q[2], "_", color="k", ms=8)
         ax.plot([], [], color=CODE_COLOR[c], lw=4, label=CODE_LABEL[c])
     for s, ls in zip((30, 50), ("--", ":")):
-        ax.axhline(np.log10(s**2), color="k", lw=0.8, ls=ls, label=f"λ = σ², σ = {s} ppm (1σ width = 1 dex)")
-        ax.axhline(np.log10(100 * s**2), color="grey", lw=0.8, ls=ls)
+        ax.axhline(np.log10(s**2), color="k", lw=0.8, ls=ls, label=f"σ = {s} ppm: 1σ width 1 dex")
+        ax.axhline(np.log10(100 * s**2), color="grey", lw=0.8, ls=ls, label=f"σ = {s} ppm: 1σ width 0.1 dex")
     ax.set_xticks(k, [f"v{j}" for j in k])
     ax.set_xlabel("Fisher eigendirection (stiffest → sloppiest)")
     ax.set_ylabel("log₁₀ λ  [ppm² per dex²]")
     ax.set_title("Eigenvalues of JᵀJ in log coordinates (bars: 68% and 95% of planets)", fontsize=9)
     ax.legend(fontsize=7, loc="upper right")
-    ax.text(9.4, np.log10(100 * 30**2), "0.1 dex", fontsize=7, color="grey", va="bottom", ha="right")
     fig.tight_layout()
     fig.savefig(os.path.join(args.out, "eigenvalues.png"), dpi=150)
     plt.close(fig)
@@ -190,14 +215,14 @@ def plots(res, summ, args):
     # 2. eigenvector composition
     fig, axs = plt.subplots(1, len(codes), figsize=(4.2 * len(codes), 4), squeeze=False)
     for ax, c in zip(axs[0], codes):
-        comp = np.median(res[c]["V_log"] ** 2, 0).T
+        comp = np.mean(res[c]["V_log"] ** 2, 0).T
         im = ax.imshow(comp, cmap="Greys", vmin=0, vmax=1)
         for (i, j), v in np.ndenumerate(comp):
             if v >= 0.1:
                 ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=6.5, color="w" if v > 0.5 else "k")
         ax.set_xticks(range(9), PARAM_NAMES, rotation=60, fontsize=8)
         ax.set_yticks(range(9), [f"v{j}" for j in k], fontsize=8)
-        ax.set_title(f"{CODE_LABEL[c]}: median squared component", fontsize=9)
+        ax.set_title(f"{CODE_LABEL[c]}: mean squared component", fontsize=9)
     fig.colorbar(im, ax=axs[0].tolist(), shrink=0.8)
     fig.savefig(os.path.join(args.out, "eigenvectors.png"), dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -282,7 +307,14 @@ def main():
     ap.add_argument("--data-dir", default="data")
     ap.add_argument("--emulator-dir", default="runs/emulator")
     ap.add_argument("--out", default="runs/fisher")
+    ap.add_argument("--plots-only", action="store_true", help="redraw the plots from saved outputs")
     args = ap.parse_args()
+    if args.plots_only:
+        with open(os.path.join(args.out, "summary.json")) as f:
+            summ = json.load(f)
+        res = {c: dict(np.load(os.path.join(args.out, f"{c}_fisher.npz"))) for c in args.codes}
+        plots(res, summ, args)
+        return
     if args.threads:
         torch.set_num_threads(args.threads)
     os.makedirs(args.out, exist_ok=True)

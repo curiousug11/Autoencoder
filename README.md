@@ -165,3 +165,60 @@ An earlier version used Adam for both the descents and the path. Those runs inve
   - plots: `barrier_hist.png`, `minima_param_diffs.png`, `example_paths.png` (the largest first-pass barriers among matched pairs, before refinement).
 - `runs/mode_paths/refine_barriers.png`: first-pass vs refined barrier for every case.
 - `runs/mode_paths/false_minima_check.json`: the long descents.
+
+## Step 3: the Fisher metric and its hierarchy (`fisher.py`)
+
+```
+python fisher.py              # ~4 min on 4 cores; writes runs/fisher/
+python fisher.py --plots-only # redraw the plots
+```
+
+With white noise σ per bin, the Fisher information of θ is g/σ², where g = JᵀJ and J = ∂S/∂θ. g is the metric that the map θ → S induces on the 9-dimensional surface of spectra. It is evaluated with the emulator ensembles at 4,000 test-set planets, the same planets for every code. Two coordinate systems are used:
+- **Log coordinates** (log₁₀ Rs, Rp, Mp, T, and the abundances, which are already in dex) for the hierarchy, as is usual for sloppy models. In these coordinates the step-1 directions are exact: Rp/Rs is (−1, 1, 0, …); the feature amplitude at fixed Rp/Rs is (½, ½, −1, 1, 0, …); scaling Rs, Rp and Mp together is (1, 1, 1, 0, …).
+- **The unit prior box** for statements relative to the prior (all priors are uniform there) and for the widths.
+
+**The eigenvalue hierarchy.** Values are log₁₀ λ in ppm² per dex², medians over planets. The three codes agree to 0.001–0.11 dex.
+
+| | v1 | v2 | v3 | v4 | v5 | v6 | v7 | v8 | v9 |
+|---|---|---|---|---|---|---|---|---|---|
+| median | 11.1 | 6.0 | 4.6 | 3.7 | 2.9 | 2.3 | 1.6 | 0.8 | −0.1 |
+| gap to next (decades) | 5.3 | 1.35 | 0.92 | 0.75 | 0.56 | 0.48 | 0.61 | 0.73 | |
+| what it is (`eigenvectors.png`) | Rp/Rs | amplitude (T/Mp) | T and Mp | chem4, chem1, chem2 | chem4, chem1 | Rs·Rp·Mp scaling + chemistry | same | chem3, chem2, chem5 | chem5, chem3 |
+
+- **The spectrum is sloppy, with one exceptionally stiff direction.** The eigenvalues span 11.4 decades at a typical planet. v1 is exactly Rp/Rs (overlap 1.000) and sits 5 decades above the rest. Below it, the other eight fall roughly geometrically, 0.5–1.4 decades apart, over 6 decades. That is the pattern sloppy models across science show (Gutenkunst et al. 2007; Transtrum, Machta & Sethna 2010, 2011). From planet to planet each eigenvalue varies by about ±2 dex (68%), almost entirely because of the feature height (next bullet).
+- **Feature height sets the overall scale** (`eigenvalues_vs_features.png`). Every eigenvalue below v1 grows as (feature height)², and v1 as about its first power. So the whole ladder slides down together towards featureless spectra, and the featureless limit from step 1 is the boundary where v2–v9 all shrink to zero together.
+- **The step-1 directions, tested:**
+  - Rp/Rs is v1.
+  - The feature amplitude at fixed Rp/Rs lies 98% in v2, which is mostly T/Mp, as expected for the scale height.
+  - v3 is a second Mp–T combination, so T and Mp are each partly constrained, not only their ratio.
+  - **Scaling Rs, Rp and Mp together is not the sloppiest direction.** It falls in v4–v7, with its Fisher eigenvalue about 10⁴·⁴ ppm² per dex², which gives a 1σ width of about 0.2 dex at 30 ppm. Pressure-dependent opacity and the chord geometry (√(Rp·H)) break the symmetry. It is a weak direction, not a near-exact one.
+  - The truly sloppy directions are chemical: chem3 and chem5, mixed with chem2.
+
+**How many directions the data constrain** (`constrained_directions.png`). The effective number of constrained directions relative to the uniform prior is N_eff = Σ λ_k/(λ_k + 12σ²) in the unit box. Its median is 5.8, 4.6, 3.9 and 2.9 at σ = 10, 30, 50 and 100 ppm. At 30 ppm it ranges from 1.3 to 6.9 across planets (16–84%), depending on feature height.
+
+Gaussian marginal posterior widths at 30 ppm, as a fraction of the prior width:
+
+| Rs | Rp | Mp | T | chem1 | chem2 | chem3 | chem4 | chem5 |
+|---|---|---|---|---|---|---|---|---|
+| 0.77 | 0.46 | 0.64 | 0.40 | 0.80 | 0.84 | 0.98 | 0.57 | 0.98 |
+
+chem3 and chem5 are essentially unconstrained, and chem4 and T are the best constrained.
+
+**A hyper-ribbon** (`widths.png`). The width of the surface along each unit-box eigendirection is the arc length in data space of the straight line through the planet, from box face to box face. Where the emulator would leave its training range, the line stops there instead. That happens towards corners with tiny Mp and large Rp and T, for 0–28% of lines, mostly along v2. Median widths in ppm:
+
+| v1 | v2 | v3 | v4 | v5 | v6 | v7 | v8 | v9 |
+|---|---|---|---|---|---|---|---|---|
+| 310,000 | 3,500 | 940 | 490 | 265 | 135 | 78 | 50–59 | 64–72 |
+
+- From v2 to v8 each width is about 0.55 times the previous one: the surface is a long, thin ribbon, as sloppy-model theory predicts (Transtrum et al. 2011).
+- For a typical planet 7 of the 9 widths exceed 2σ at 30–50 ppm. Over the full prior range, then, the data can see 7 dimensions, but at the precision of a single planet only about 4.6 are constrained (N_eff).
+- **v9 breaks the series.** The locally sloppiest direction is not the globally narrowest, and its arc is 21 times longer than the straight-line estimate √λ × (parameter span). Along v6–v9 the spectrum's sensitivity grows rapidly away from the planet. That is strong nonlinearity, whether it bends the surface or only stretches its parametrisation, and step 4 tells the two apart.
+
+**Robustness.**
+- Eigenvalues from individual ensemble members agree with the ensemble mean to a median of ≤ 0.02 dex for v1–v7, 0.05 dex for v8 and 0.14 dex for v9.
+- The eigen-subspaces of different codes differ by angles with sine ≤ 0.13.
+
+**Outputs** in `runs/fisher/`:
+- `summary.json`;
+- `{code}_fisher.npz` (per-planet eigenvalues and eigenvectors in both coordinate systems, and the widths);
+- plots: `eigenvalues.png`, `eigenvectors.png`, `constrained_directions.png`, `eigenvalues_vs_features.png`, `widths.png`.
