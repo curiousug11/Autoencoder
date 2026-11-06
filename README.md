@@ -412,6 +412,9 @@ The rate for random planets is 1.25% for petitRADTRANS at both noise levels. For
 
 ### References
 - Bates, D. M., & Watts, D. G. (1980). Relative curvature measures of nonlinearity. *Journal of the Royal Statistical Society B*, 42(1), 1–25. https://doi.org/10.1111/j.2517-6161.1980.tb01094.x
+- Del Moral, P., Doucet, A., & Jasra, A. (2006). Sequential Monte Carlo samplers. *Journal of the Royal Statistical Society B*, 68(3), 411–436. https://doi.org/10.1111/j.1467-9868.2006.00553.x
 - Gutenkunst, R. N., et al. (2007). Universally sloppy parameter sensitivities in systems biology models. *PLoS Computational Biology*, 3(10), e189. https://doi.org/10.1371/journal.pcbi.0030189
+- Speagle, J. S. (2020). dynesty: a dynamic nested sampling package for estimating Bayesian posteriors and evidences. *Monthly Notices of the Royal Astronomical Society*, 493(3), 3132–3158. https://doi.org/10.1093/mnras/staa278
+- ter Braak, C. J. F. (2006). A Markov chain Monte Carlo version of the genetic algorithm Differential Evolution: easy Bayesian computing for real parameter spaces. *Statistics and Computing*, 16, 239–249. https://doi.org/10.1007/s11222-006-8769-1
 - Transtrum, M. K., Machta, B. B., & Sethna, J. P. (2010). Why are nonlinear fits to data so challenging? *Physical Review Letters*, 104, 060201. https://doi.org/10.1103/physrevlett.104.060201
 - Transtrum, M. K., Machta, B. B., & Sethna, J. P. (2011). Geometry of nonlinear least squares with applications to sloppy models and optimization. *Physical Review E*, 83, 036701. https://doi.org/10.1103/physreve.83.036701
