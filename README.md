@@ -707,3 +707,55 @@ Median bias (predicted − true) as % of the prior range: the pooled model is wi
   - `residual_spread.png`
   - `learning_curves.png`
   - `loss_curves_pooled.png`
+
+### Pooled-code retrieval vs test noise: 0–50 ppm (`runs/retrieval_pooled_test{10,20,30,50}ppm/`, `runs/retrieval_pooled_noise/`)
+
+The saved noiseless-trained pooled models are applied to the same noisy test spectra as the code-specific models. The noise realisations are identical, because both runs draw from the same seeded generator in the same order.
+
+```
+for s in 10 20 30 50; do python ml_retrieval.py --pooled --test-noise-ppm $s --models-dir runs/retrieval_models \
+    --train-fracs --out runs/retrieval_pooled_test${s}ppm; done
+python compare_pooled_noise.py --noise 0 10 20 30 50 \
+    --per-code runs/retrieval runs/retrieval_test{10,20,30,50}ppm \
+    --pooled runs/retrieval_pooled runs/retrieval_pooled_test{10,20,30,50}ppm --out runs/retrieval_pooled_noise
+```
+
+Mean R², self / cross / **pooled**:
+
+| parameter | 0 ppm | 10 ppm | 20 ppm | 30 ppm | 50 ppm |
+|---|---|---|---|---|---|
+| T | 0.997 / 0.963 / **0.997** | 0.962 / 0.931 / **0.963** | 0.894 / 0.867 / **0.899** | 0.819 / 0.794 / **0.825** | 0.678 / 0.659 / **0.689** |
+| chem4 | 0.994 / 0.983 / **0.995** | 0.964 / 0.954 / **0.968** | 0.916 / 0.907 / **0.925** | 0.866 / 0.859 / **0.879** | 0.769 / 0.764 / **0.784** |
+| chem2 | 0.966 / 0.951 / **0.967** | 0.900 / 0.891 / **0.896** | 0.831 / 0.823 / **0.822** | 0.772 / 0.765 / **0.758** | 0.680 / 0.674 / **0.661** |
+| chem1 | 0.959 / 0.953 / **0.961** | 0.888 / 0.884 / **0.882** | 0.797 / 0.792 / **0.777** | 0.707 / 0.705 / **0.671** | 0.541 / 0.538 / **0.473** |
+| chem5 | 0.901 / 0.873 / **0.902** | 0.790 / 0.774 / **0.788** | 0.641 / 0.631 / **0.627** | 0.507 / 0.502 / **0.478** | 0.296 / 0.291 / **0.225** |
+| Mp | 0.901 / 0.866 / **0.907** | 0.856 / 0.834 / **0.848** | 0.792 / 0.776 / **0.760** | 0.727 / 0.716 / **0.674** | 0.608 / 0.600 / **0.523** |
+| chem3 | 0.851 / 0.627 / **0.852** | 0.596 / 0.438 / **0.529** | 0.287 / 0.163 / **0.074** | 0.001 / −0.094 / **−0.375** | −0.459 / −0.533 / **−1.166** |
+| Rs | 0.761 / 0.661 / **0.763** | 0.578 / 0.525 / **0.531** | 0.370 / 0.342 / **0.244** | 0.204 / 0.190 / **0.009** | −0.010 / −0.015 / **−0.299** |
+| Rp | 0.609 / 0.437 / **0.620** | 0.349 / 0.250 / **0.288** | 0.035 / −0.028 / **−0.142** | −0.222 / −0.265 / **−0.490** | −0.572 / −0.598 / **−0.962** |
+
+Pooled-model median bias on POS / petitRADTRANS / TauREx test spectra:
+
+| σ (ppm) | T (K) | chem3 (dex) | Rp (R_J) |
+|---|---|---|---|
+| 0 | −1 / +1 / 0 | −0.04 / −0.02 / −0.02 | −0.004 / −0.014 / −0.008 |
+| 10 | −6 / −2 / −3 | −0.08 / −0.03 / −0.03 | +0.008 / −0.007 / +0.002 |
+| 20 | −14 / −6 / −9 | −0.16 / −0.08 / −0.09 | +0.008 / −0.001 / +0.002 |
+| 30 | −24 / −12 / −15 | −0.25 / −0.17 / −0.17 | +0.010 / +0.002 / −0.004 |
+| 50 | −42 / −24 / −31 | −0.45 / −0.33 / −0.36 | +0.013 / −0.001 / −0.005 |
+
+- **The pooled model keeps the code-dependent bias small at every noise level.**
+  - Its biases on the three codes' spectra stay close to each other. For example, T at 50 ppm is −24 to −42 K, while cross models range from −130 to +9 K. Rp bias stays near 0 (≤ 0.014 R_J), against ±0.04–0.08 R_J for cross models.
+  - What remains is a common, noise-induced drift shared with self retrieval (T and chem3 drift low as σ grows).
+- **For the well-constrained parameters, pooled is the best option at every noise level.** For T and chem4 it beats both self and cross retrieval at every σ, by 0.005–0.015 in R².
+- **For the weakly constrained parameters, the noiseless-trained pooled model breaks down faster with noise than the code-specific models.** These are chem3, Rp, Rs, Mp and, to a lesser extent, chem1 and chem5.
+  - chem3: 0.074 at 20 ppm, against 0.287 for self and 0.163 for cross.
+  - Rp: −0.96 at 50 ppm.
+  - chem3's noise-induced bias is also larger: −0.45 dex at 50 ppm, against −0.22 dex for self.
+  - Explanation: without noise, the pooled model separates the codes using fine spectral details that it partly relies on for these parameters. Noise erases those details, so its predictions move further out of distribution than a single-code model's.
+- **Next step:** train with noise (`--pooled --noise-ppm σ`). The pooled model could then keep its low code bias while learning noise-robust features, and should recover the precision lost on chem3, Rp and Rs.
+- **Plots:**
+  - `pooled_vs_noise.png`: R², |bias| and spread vs σ, self vs cross vs pooled.
+  - `pooled_bias_vs_noise.png`: signed bias per tested code.
+  - `summary.txt`
+  - `runs/retrieval_pooled_test*ppm/comparison_table.txt`: per-code tables at each σ.

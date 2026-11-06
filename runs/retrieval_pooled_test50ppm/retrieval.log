@@ -1,0 +1,22 @@
+train pooled (all codes) Rs     best round 2999  R² POS -0.254  petitRADTRANS -0.280  TauREx -0.364  [2s]
+train pooled (all codes) Rp     best round 2995  R² POS -0.889  petitRADTRANS -0.954  TauREx -1.044  [2s]
+train pooled (all codes) Mp     best round 2984  R² POS 0.535  petitRADTRANS 0.527  TauREx 0.507  [2s]
+train pooled (all codes) T      best round 2991  R² POS 0.681  petitRADTRANS 0.694  TauREx 0.692  [2s]
+train pooled (all codes) chem1  best round 1910  R² POS 0.464  petitRADTRANS 0.462  TauREx 0.493  [1s]
+train pooled (all codes) chem2  best round 1480  R² POS 0.661  petitRADTRANS 0.668  TauREx 0.654  [1s]
+train pooled (all codes) chem3  best round 2551  R² POS -1.371  petitRADTRANS -1.105  TauREx -1.020  [2s]
+train pooled (all codes) chem4  best round 2995  R² POS 0.777  petitRADTRANS 0.779  TauREx 0.798  [2s]
+train pooled (all codes) chem5  best round  684  R² POS 0.244  petitRADTRANS 0.239  TauREx 0.193  [0s]
+
+trained on pooled (all codes): R² / median bias (predicted − true) on test planets
+  param                         POS             petitRADTRANS                    TauREx
+  Rs           -0.254     +0.00904       -0.280     +0.00652       -0.364      +0.0059 
+  Rp           -0.889       +0.013       -0.954    -0.000896       -1.044       -0.005 
+  Mp            0.535      -0.0806        0.527      -0.0797        0.507       -0.109 
+  T             0.681          -42        0.694        -24.3        0.692        -30.7 
+  chem1         0.464       -0.105        0.462      -0.0919        0.493      -0.0835 
+  chem2         0.661      -0.0422        0.668      -0.0392        0.654      -0.0191 
+  chem3        -1.371       -0.446       -1.105       -0.334       -1.020       -0.361 
+  chem4         0.777      +0.0526        0.779      +0.0435        0.798      +0.0459 
+  chem5         0.244      -0.0924        0.239      -0.0841        0.193      -0.0832 
+saved to runs/retrieval_pooled_test50ppm/
