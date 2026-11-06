@@ -3,3 +3,4 @@ scipy
 matplotlib
 scikit-learn
 torch  # CPU build: pip install torch --index-url https://download.pytorch.org/whl/cpu
+dynesty
