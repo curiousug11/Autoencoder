@@ -668,3 +668,42 @@ Median bias ± 16–84% half-width:
   - `vs_noise.png`: R², |bias|, half-width and |bias|/half-width vs noise, self vs cross.
   - `comparison.png`: every train→test pair at all 5 noise levels.
   - `comparison_table.txt`: the full numbers.
+
+## Pooled-code retrieval (`ml_retrieval.py --pooled`, `runs/retrieval_pooled/`)
+
+One XGBoost regressor per parameter is trained on the spectra of all three codes together. The training set is the same 30,719 planets, each contributing its POS, petitRADTRANS and TauREx spectrum (92,157 spectra), and the validation set is pooled the same way. The models are then tested on each code's test spectra (noiseless). Features and hyperparameters are the same as the code-specific models. The models are saved in `runs/retrieval_models/pooled_*.json`.
+
+```
+python ml_retrieval.py --pooled --models-dir runs/retrieval_models --out runs/retrieval_pooled
+python compare_pooled.py runs/retrieval runs/retrieval_pooled
+```
+
+Test R²: self = model trained on the tested code; cross = models trained on the other two codes (range); pooled = one model trained on all codes:
+
+| parameter | self | cross | **pooled** |
+|---|---|---|---|
+| T | 0.997 | 0.92–0.99 | **0.997–0.998** |
+| chem4 | 0.994 | 0.98–0.99 | **0.994–0.995** |
+| chem2 | 0.96–0.97 | 0.94–0.96 | **0.966–0.968** |
+| chem1 | 0.96 | 0.95–0.96 | **0.959–0.962** |
+| Mp | 0.90 | 0.84–0.88 | **0.906–0.907** |
+| chem5 | 0.90 | 0.83–0.89 | **0.901–0.903** |
+| chem3 | 0.85–0.86 | 0.54–0.71 | **0.848–0.860** |
+| Rs | 0.76–0.77 | 0.55–0.72 | **0.760–0.768** |
+| Rp | 0.60–0.62 | 0.24–0.54 | **0.616–0.625** |
+
+Median bias (predicted − true) as % of the prior range: the pooled model is within ±0.8% for every code and parameter, the same level as self retrieval (±0.7%). Cross retrieval reaches up to 6%.
+- **T:** pooled bias is within ±8 K across the whole 300–3000 K range. Cross retrieval reached −300 K at 3000 K.
+- **chem3:** pooled bias is −0.03 to −0.04 dex. Cross retrieval was ±0.2–0.4 dex.
+
+- **For noiseless spectra, one pooled model removes the code bias entirely.** It matches self retrieval on every code and parameter, and is marginally better in R² and in the 16–84% spread (`pooled_vs_per_code.png`). That is probably because it sees each planet three times, and the spread between codes acts as extra augmentation.
+- **The pooled model can do this only because it can tell which code made each spectrum.** The random forest identifies the code correctly 97% of the time at 0 ppm, so the pooled model can learn each code's own spectrum-to-parameter mapping. With noise, codes become indistinguishable for most planets (classifier accuracy 0.55–0.68 at 20–50 ppm). The pooled model should then fall back to an average of the codes. That would leave an intermediate, but probably smaller, bias plus an extra scatter term reflecting the spread between codes.
+- **Learning curves:** all three test codes improve together with training size, with no self vs cross gap.
+- **Plots:**
+  - `pooled_vs_per_code.png`
+  - `true_vs_pred_pooled.png`
+  - `code_bias.png`
+  - `bias_vs_true.png`
+  - `residual_spread.png`
+  - `learning_curves.png`
+  - `loss_curves_pooled.png`
