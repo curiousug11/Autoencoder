@@ -269,6 +269,7 @@ python curvature.py --plots-only # redraw the plots
 **4. When the data do cross the focal set, a genuine split appears, but with a small barrier** (`focal_validation.png`, bottom row).
 - Data are placed at t·ρ_c along the most curved data-constrained normal. The exact χ² Hessian follows the predicted 1 − t to within 5×10⁻⁴ in every case. The minimum stays put for t < 1 and splits for t > 1.
 - For the most curved planets (ρ_c ≈ σ), the barrier between the two new minima is Δχ² ≈ 0.1 at t = 1.1, 0.5–0.6 at t = 1.5 and 1.3–3.2 at t = 2.5, at 30 ppm. The new minima often run to a prior box face.
+- *Correction from step 5:* the Δχ² values in this list are the drop from the true planet (now a saddle) to the better new minimum. That is a barrier along one line only. Step 5 (`check_split_barriers.py`) joins the two minima by the string method in all 9 dimensions. At 30 ppm the barriers are 0.13 (POS) and 1.2 (TauREx) for the ρ_c ≈ σ planets at t = 2.5. For typical planets they are 1.2–4.9 at t = 1.5 and 2.3–26 at t = 2.5. The two minima are also far from symmetric: they differ by Δχ² 3–55.
 - For typical planets (ρ_c ≈ 160 ppm), data that far off the surface (≥ 5σ) already destabilise the sloppy directions before the constrained one. Δχ² reaches 2–3 at t ≈ 0.9 and 55–73 at t = 2.5 (13σ), but noise that large is not realistic.
 - So at realistic noise a focal crossing broadens and flattens the χ² basin instead of creating a separate mode. That is what step 2 measured directly: no barrier ≥ 0.5 survived refinement in 1,800 noisy pairs per run.
 
@@ -279,7 +280,7 @@ python curvature.py --plots-only # redraw the plots
 - **Eigenvalue hierarchy.** The model manifold is sloppy. Rp/Rs alone is 5 decades stiffer than anything else. The other 8 directions fall geometrically, about 0.5–1.4 decades apart, over 6 decades. All of them scale with (feature height)², and the featureless edge is where they vanish together. Among the step-1 hypotheses, Rp/Rs and the amplitude are confirmed as the stiff directions. The Rs–Rp–Mp scaling is weak but not the sloppiest; that place belongs to chem3, chem5 and chem2.
 - **Curvature.** Strong. Extrinsic curvature radii are 0.25–0.5 of the widths along every direction except Rp/Rs, so the surface is a curled hyper-ribbon. Intrinsic curvature is negligible in the stiff plane; in the sloppy planes it cannot be pinned down with these emulators.
 - **Boundaries.** The prior box faces cut the ribbon. When minima split they usually run to a face. The featureless limit is a boundary where 8 directions collapse together.
-- **Folds and caustics.** The focal set exists and sits very close to the surface along the sloppy directions, so noise crosses it routinely, but those crossings produce only invisible ripples. Along the constrained directions it lies about 5σ out, and crossing it has a probability below about 1% per planet at 30–50 ppm. Even then it creates only shallow splits unless the data are far beyond it. **For this cloud-free, 9-parameter model, focal-set crossings are real but are not a practical source of multimodal posteriors.** The geometry predicts non-Gaussian, banana-shaped posteriors at most planets instead. Step 5 can test both predictions with full posterior sampling on the emulators, including whether planets with high P_focal, mostly features of 30–210 ppm, show more multimodality.
+- **Folds and caustics.** The focal set exists and sits very close to the surface along the sloppy directions, so noise crosses it routinely, but those crossings produce only invisible ripples. Along the constrained directions it lies about 5σ out, and crossing it has a probability below about 1% per planet at 30–50 ppm. Even then it creates only shallow splits unless the data are far beyond it. **For this cloud-free, 9-parameter model, focal-set crossings are real but are not a practical source of multimodal posteriors.** The geometry predicts non-Gaussian, banana-shaped posteriors at most planets instead. Step 5 can test both predictions with full posterior sampling on the emulators, including whether planets with high P_focal, mostly features of 30–210 ppm, show more multimodality. (It does; see below.)
 
 **Caveats.**
 - All second-derivative results come from emulators and are trusted only where the 4 members agree. Curvature along v8–v9 and the scalar curvature are mostly not measurable this way. A finite-difference check with the radiative-transfer codes themselves at a few planets would settle them.
@@ -290,6 +291,124 @@ python curvature.py --plots-only # redraw the plots
 - `summary.json` (including the validation rows);
 - `{code}_curvature.npz`: per planet, κ_max and its tangent and normal directions; the data-constrained versions; normal curvature per direction; sectional and scalar curvature; the focal-crossing samples λ_max(Σ z_k B_k); and the member-agreement ratios;
 - plots: `focal_distance.png`, `radius_vs_width.png`, `focal_probability.png`, `focal_validation.png`.
+
+## Step 5: full posteriors against the geometry (`posterior.py`, `check_split_barriers.py`)
+
+```
+python posterior.py --validate     # sampler checks: toy and dynesty (~30 min)
+python posterior.py                # 440 retrievals (~4 h on 3 cores); writes runs/posterior/
+python posterior.py --controls     # pipeline controls built from the step-4 focal validation (~25 min)
+python check_split_barriers.py     # 9-D barriers between the step-4 split minima (~5 min)
+python posterior.py --plots-only
+```
+
+**Set-up.**
+- Each retrieval simulates an observation y = S(θ₀) + white noise of a test-set planet, with σ = 30 or 50 ppm per bin, and samples the full 9-parameter posterior under the uniform box prior.
+- S is the ensemble-mean emulator, so the data lie exactly on the emulator's surface. Emulator error therefore cannot pose as multimodality: this is a test of the geometry measured in steps 3–4, not of the radiative-transfer codes.
+- **Planets.** petitRADTRANS has 80 random planets plus 80 "enriched" ones, at both σ. The enriched planets are the reliable ones with the highest data-constrained P_focal at 30 ppm. POS and TauREx have 30 + 30 at σ = 30 ppm. That makes 440 retrievals.
+- **The geometry is computed at the true planet before sampling**, from the noise draw actually used:
+  - Λ_dc = λ_max(Σ ε_k B_k) over the data-constrained directions. Λ_dc > 1 means this noise carried the data across the focal set.
+  - P_focal_dc.
+  - The Bates–Watts intrinsic (γ_N) and parameter-effects (γ_T) nonlinearities.
+  - The Fisher+prior Gaussian width of every parameter.
+
+**Sampler.**
+- Tempered sequential Monte Carlo (Del Moral et al., 2006) with 800 particles. The temperature steps adapt to keep the effective sample size at half the particles.
+- It uses systematic resampling and differential-evolution Metropolis moves (ter Braak, 2006). All retrievals of a code and σ run as one batch.
+- All 440 runs converged, in a median of 10–12 temperature stages.
+- Validation (`validation.json`) against dynesty nested sampling (Speagle, 2020) at 4 planets:
+  - quantiles agree to a median of 0.09–0.14 posterior sd (maximum 0.29–0.50 sd);
+  - posterior sd ratios are 0.77–1.19;
+  - log-evidences agree within 0.7 nats at 3 planets; the fourth is 3.5 nats low.
+- So the SMC evidence is noisy and can be biased low.
+- **Known limitation.** On a toy with two separated sloppy Gaussians holding 70/30 of the mass, tempering keeps only one mode in each of 8 runs. A phase transition empties the minority mode before it separates. That is why modes are not read off the particles.
+
+**Mode census.**
+- 40 starting points per retrieval: 16 final posterior samples, plus 24 particles saved at β = 10⁻⁶–0.1, which are spread over every basin before any can be lost.
+- Each start is descended to its χ² minimum with the step-2 Levenberg–Marquardt descent. The minima are grouped (within 0.03 in the unit box).
+- Each group's barrier to the best group is measured with the string method. Any barrier ≥ 2 is re-measured with re-descended ends and 12 routes (as in `refine_modes.py`).
+- The posterior mass of each separate mode (barrier ≥ 2) comes from importance sampling: a multivariate-t proposal with the local Fisher+prior covariance, inflated 1.5×, relative to the SMC evidence of the main mode.
+- A retrieval is **multimodal** if separate modes hold ≥ 5% of the posterior, by either the share of posterior samples that descend into them or the importance-sampling mass.
+- On the toy, the importance-sampling masses recover the 0.69/0.31 split and log Z ≈ 0.
+
+### Results
+
+**1. Multimodal posteriors are rare: 3 of 440** (`multimodal_fraction.png`).
+
+| | random planets | enriched (high P_focal) | noise crossed the focal set (Λ_dc > 1) | multimodal, given crossed |
+|---|---|---|---|---|
+| petitRADTRANS, 30 ppm | 1 / 80 | 0 / 80 | 2 + 11 | 0 / 13 |
+| petitRADTRANS, 50 ppm | 1 / 80 | 1 / 80 | 2 + 1 | 0 / 3 |
+| POS, 30 ppm | 0 / 30 | 0 / 30 | 1 + 3 | 0 / 4 |
+| TauREx, 30 ppm | 0 / 30 | 0 / 30 | 2 + 5 | 0 / 7 |
+
+The rate for random planets is 1.25% for petitRADTRANS at both noise levels. For POS and TauREx it is 0 of 30, i.e. below about 10% at 95% confidence.
+
+**2. The focal-set prediction works as a prediction of crossings, but crossings do not produce modes** (`posterior_vs_geometry.png`, left).
+- Enrichment worked: the noise crossed the data-constrained focal set in 27 retrievals, against 23.4 expected from the summed P_focal_dc.
+- **None of the 27 crossings gave a multimodal posterior.** None had a separate mode of any weight.
+- A barrier ≥ 0.5 between minima appeared in 3 of 27 crossed retrievals (11%) against 23 of 413 not crossed (5.6%). That leans the predicted way, but 3 cases cannot establish it.
+- The three multimodal retrievals had Λ_dc = 0.22, 0 and 0.012, i.e. nowhere near the focal set.
+
+**3. Every separate mode sits on the prior box boundary.**
+- The census found 17 separate minima (barrier ≥ 2), in 9 retrievals.
+- **All 17 lie on 2–6 faces of the prior box at once** (by contrast, a random interior point would be within 0.005 of even one face only about 9% of the time).
+- The three that carry weight are at features of 41–122 ppm. Their minima sit at the extremes of chem1, chem3 and chem5 (and of T or chem2), with Rs and Rp moved together far from the truth (e.g. Rs at 0.07–0.18 of its range against a true 0.96). They are 0.3–4.0 above the best χ², with barriers of 2.9–4.9.
+- They are therefore the ends of curved valleys cut off by the box. This is the boundary mechanism of step 4 (minima "run to a face"), not a fold of the surface.
+- Their masses are uncertain. The importance-sampling ESS is only 1–3.6 for these modes. One case counts as multimodal by the sample share (0.125) but not by importance-sampling mass (1.4%).
+
+**4. The Fisher+prior widths are good to about 15%, and the curvature measures barely predict where they fail** (`posterior_vs_geometry.png`, middle and right).
+- Median ratio of posterior sd to Fisher+prior prediction:
+  - Rs, Rp, T, chem1, chem3 and chem4: 0.93–1.01;
+  - Mp, chem2 and chem5: 0.88–0.94 (narrower, as the box clips their curved valleys).
+- The median |log ratio| per retrieval is 0.056–0.074 dex, a factor of 1.14–1.19.
+- The fraction of retrievals with a parameter off by more than 1.5× is 8–22% for Rs, Rp, T and chem3–4, and 18–38% for Mp, chem1, chem2 and chem5.
+- By Bates–Watts, the posterior should be non-Gaussian at 60–62.5% of random planets, as step 4 found. Taking all 440 retrievals together, 63–80% are above the intrinsic limit and 84–93% above the parameter-effects limit.
+- But the size of the width error tracks these measures only weakly:
+
+  | Spearman ρ with width error | value |
+  |---|---|
+  | γ_N | 0.22–0.51 |
+  | γ_T | 0.15–0.25 |
+  | feature height | 0.48–0.62 |
+
+- The width error is 0.007–0.011 dex below the γ_T limit and 0.068–0.078 dex above it. However, 47 of the 48 planets below the limit have only one data-constrained direction (median feature 5 ppm), where the posterior is essentially the prior.
+- So the Bates–Watts split mostly separates "nothing measured" from "something measured".
+- The pilot's correlation of 0.71 with γ_T came from 12–16 runs and did not hold up.
+
+**5. Controls** (`controls.json`, `control_split_barriers.json`).
+- **Cases.** The 8 cases where step 4 placed noise-free data beyond the focal set (t = 1.5 or 2.5) with a Δχ² drop ≥ 2 at 30 ppm, and the same planets at t = 0.5.
+- **Negative controls: 5 of 5 unimodal**, with maximum barrier ≤ 0.015.
+- **The split minima are real in 9 dimensions in 5 of 8 cases.** `check_split_barriers.py` measures the barriers between the two step-4 minima: 4.9 and 26 (petitRADTRANS), 2.3 (POS, t = 2.5) and 4.7 and 17 (TauREx). The other three are 0.13–1.2.
+- But the two minima differ by Δχ² = 3–55, so the second is usually negligible. Its weight goes roughly as e^(−Δχ²/2).
+- **What the census reported:**
+  - Two cases are multimodal: POS t = 2.5 (separate minima 2.3–2.7 above the best, holding most of the samples) and TauREx 1147 at t = 1.5 (1 of 16 samples, 3% by importance sampling).
+  - It found the TauREx t = 2.5 second mode (barrier 15) and correctly gave it no weight (6×10⁻⁶).
+  - It missed the petitRADTRANS second minima, which are 12 and 30 above the best χ². No posterior sample or tempered particle reaches them, and their weight would be ≲ 0.3%.
+- So the census finds modes that hold posterior mass, and gives no weight to minima that do not. It is not an exhaustive search for every minimum, and does not need to be for the 5% criterion.
+
+### What step 5 says about the project question
+
+- **Neither proposed mechanism makes multimodal posteriors common in this model.** The rate is about 1% for random planets at 30–50 ppm.
+- **Global (close approaches):** no retrieval found a separate mode in the interior of the box.
+- **Local (focal set):** noise crosses the focal set at the rate the geometry predicts. Of 27 crossings, none produced a separate mode: the new minima are shallow or lopsided.
+- **The multimodality that does occur comes from the prior boundary.** The surface is a curled ribbon (step 4), so the box cuts its curved valleys into pieces, and the ends that lie along the box faces become weak secondary minima. Folding plays no part.
+- **The geometry's real use is for widths and shapes, not modes.**
+  - The Fisher+prior widths are right to about 15%.
+  - Bates–Watts flags most planets as nonlinear, correctly in the sense that nearly all have a width or shape error. But neither γ_N nor γ_T ranks the size of the error much better than feature height alone.
+
+**Caveats.**
+- These are tests of the emulator's surface, with data generated on it. Model error between the radiative-transfer codes, which step 2 showed is large, is a separate and likely bigger source of biased or multimodal retrievals in practice.
+- No clouds, no offsets between instruments, white noise only.
+- Mode masses from importance sampling have ESS of 1–10, and the SMC evidence can be several nats low. The 5% criterion is accurate to a factor of a few. With rates this low, this does not change the conclusion.
+- The census is limited by its starting points (40 per retrieval). A mode that neither the posterior samples nor the tempered particles visit is missed, but such a mode carries negligible mass by construction.
+
+**Outputs** in `runs/posterior/`:
+- `summary.json`: rates, contingency tables and width tests per code and σ;
+- `runs.json`: per retrieval, the geometry, the census and the widths;
+- `{code}_sigma{σ}_samples.npz`: 400 posterior samples per retrieval;
+- `validation.json`, `controls.json`, `control_split_barriers.json`;
+- plots: `posterior_vs_geometry.png`, `multimodal_fraction.png`.
 
 ### References
 - Bates, D. M., & Watts, D. G. (1980). Relative curvature measures of nonlinearity. *Journal of the Royal Statistical Society B*, 42(1), 1–25. https://doi.org/10.1111/j.2517-6161.1980.tb01094.x
