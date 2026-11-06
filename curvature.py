@@ -284,13 +284,15 @@ def summarise(r, args):
             "most_curved_direction_weight_on_v_k_median": np.median(m[f"ustar_dc_{s:g}"][rr] ** 2, 0).round(3).tolist(),
         }
     # intrinsic curvature
-    rK = rel["Kmax_abs"]
-    out["intrinsic"] = {key: {"percentiles_16_50_84_per_ppm2": pctl(m[key][rK], (16, 50, 84)),
-                              "frac_positive": float((m[key][rK] > 0).mean())}
-                        for key in ("scalar_R", "K12", "K89")}
-    out["intrinsic"]["radius_ppm_from_max_sectional_median"] = float(np.median(1 / np.sqrt(m["Kmax_abs"][rK])))
-    out["intrinsic"]["radius_ppm_stiffest_plane_median"] = float(np.median(1 / np.sqrt(np.abs(m["K12"]).clip(1e-300))))
-    out["intrinsic"]["frac_reliable"] = float(rK.mean())
+    # reliability: scalar curvature and the largest sectional curvature by their own member agreement;
+    # the sectional curvature of a plane by the agreement of the normal curvatures of its two directions
+    masks = {"scalar_R": rel["Kmax_abs"], "K12": rel["kdir"][:, 0] & rel["kdir"][:, 1],
+             "K89": rel["kdir"][:, 7] & rel["kdir"][:, 8]}
+    out["intrinsic"] = {key: {"percentiles_16_50_84_per_ppm2": pctl(m[key][mk], (16, 50, 84)),
+                              "frac_positive": float((m[key][mk] > 0).mean()), "frac_reliable": float(mk.mean()),
+                              "radius_ppm_median": float(np.median(1 / np.sqrt(np.abs(m[key][mk]).clip(1e-300))))}
+                        for key, mk in masks.items()}
+    out["intrinsic"]["radius_ppm_from_max_sectional_median"] = float(np.median(1 / np.sqrt(m["Kmax_abs"][rel["Kmax_abs"]])))
     # feature dependence (data-constrained, first sigma)
     s0 = args.dc_sigmas[0]
     key = f"kappa_dc_{s0:g}"
@@ -352,6 +354,8 @@ def plots(res, summ, args):
         rr = rel[f"kappa_dc_{s0:g}"] & (k > 0)
         ax.hist(np.clip(np.log10(1 / k[rr]), -3, 4.99), bins, histtype="step", lw=1.8, color=CODE_COLOR[c],
                 label=f"{CODE_LABEL[c]}: data-constrained directions (σ = {s0:g})")
+    ax.annotate("≥ 10⁵ ppm: only Rp/Rs\nconstrained (flat;\nmostly featureless)", xy=(4.9, 250), xytext=(3.3, 300),
+                fontsize=7, arrowprops=dict(arrowstyle="->", lw=0.7))
     ax.axvline(np.log10(s0), color="k", lw=0.9, label=f"σ = {s0:g} ppm")
     ax.axvline(np.log10(s0 * np.sqrt(p) / bw), color="grey", lw=0.9, label=f"Bates–Watts limit at σ = {s0:g} ppm")
     ax.set_xlabel("log₁₀ distance to the nearest focal point ρ_c = 1/κ_max (ppm)")
@@ -416,7 +420,8 @@ def plots(res, summ, args):
     axs[0].set_xscale("log")
     axs[0].set_xlabel("noise σ per bin (ppm)")
     axs[0].set_ylabel("P(noise crosses the focal set), mean over planets")
-    axs[0].set_yscale("symlog", linthresh=1e-3)
+    axs[0].set_yscale("log")
+    axs[0].set_ylim(1e-3, 1.2)
     axs[0].legend(fontsize=6)
     axs[1].axvline(0, color="k", lw=0.8)
     axs[1].axvline(np.log10(np.sqrt(p) / bw), color="grey", lw=0.8, label="Bates–Watts limit")
@@ -472,7 +477,20 @@ def main():
     ap.add_argument("--emulator-dir", default="runs/emulator")
     ap.add_argument("--fisher-dir", default="runs/fisher")
     ap.add_argument("--out", default="runs/curvature")
+    ap.add_argument("--plots-only", action="store_true", help="redraw the plots from saved outputs")
     args = ap.parse_args()
+    if args.plots_only:
+        with open(os.path.join(args.out, "summary.json")) as f:
+            summ = json.load(f)
+        res = {}
+        for c in args.codes:
+            z = dict(np.load(os.path.join(args.out, f"{c}_curvature.npz")))
+            ratio = {k[6:]: v for k, v in z.items() if k.startswith("ratio_")}
+            res[c] = {"mean": {k: (v.astype(np.float64) if k.startswith("focal_lambda") else v) for k, v in z.items()},
+                      "rel": {k: v < args.reliable_ratio for k, v in ratio.items()},
+                      "width": z["width"], "validation": summ[c]["validation"]}
+        plots(res, summ, args)
+        return
     if args.threads:
         torch.set_num_threads(args.threads)
     os.makedirs(args.out, exist_ok=True)
@@ -488,9 +506,7 @@ def main():
             os.path.join(args.out, f"{c}_curvature.npz"), index=idx, theta=res[c]["theta"], feat_ppm=res[c]["feat_ppm"],
             lam_u=res[c]["lam_u"], width=res[c]["width"],
             **{f"ratio_{k}": v for k, v in res[c]["ratio"].items()},
-            **{k: v for k, v in m.items() if not k.startswith("focal_lambda")},
-            **{f"{k}_quantiles": np.quantile(v, np.linspace(0, 1, 101), axis=1).T
-               for k, v in m.items() if k.startswith("focal_lambda")})
+            **{k: (v.astype(np.float16) if k.startswith("focal_lambda") else v) for k, v in m.items()})
     summ["code_comparison"] = compare_codes(res, args)
     summ["settings"] = vars(args)
     with open(os.path.join(args.out, "summary.json"), "w") as f:

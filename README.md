@@ -222,3 +222,77 @@ chem3 and chem5 are essentially unconstrained, and chem4 and T are the best cons
 - `summary.json`;
 - `{code}_fisher.npz` (per-planet eigenvalues and eigenvectors in both coordinate systems, and the widths);
 - plots: `eigenvalues.png`, `eigenvectors.png`, `constrained_directions.png`, `eigenvalues_vs_features.png`, `widths.png`.
+
+## Step 4: curvature and the focal set (`curvature.py`)
+
+```
+python curvature.py              # after fisher.py; ~30 min on 4 cores; writes runs/curvature/
+python curvature.py --plots-only # redraw the plots
+```
+
+**What is computed.** This uses 2,000 of the step-3 planets, the same ones for every code. The emulator Hessians H = ∂²S/∂u² are exact autograd second derivatives; they match finite differences to 10⁻⁹. Their part normal to the surface is the second fundamental form. In the Fisher eigenbasis, scaled so that a unit step moves the spectrum by 1 ppm, it becomes 52 symmetric 9×9 matrices B_k (units 1/ppm). From these:
+- **Normal curvature** along a unit direction u is the data-space vector B(u,u). The largest principal curvature is κ_max = max |B(u,u)|. Its inverse ρ_c is the **distance from the surface to its nearest focal point**.
+- **Focal set.** Data y = S(θ) + ε with ε normal to the surface leave θ a critical point of χ², with Hessian I − Σ ε_k B_k in this frame. The minimum splits (a fold or cusp of the distance-squared function) exactly when λ_max(Σ ε_k B_k) > 1, i.e. when the data cross the focal set. For white noise, P_focal(σ) is the probability that noise carries the data across it near the true planet (Monte Carlo, 512 draws per planet).
+- **Bates & Watts (1980) intrinsic nonlinearity** γ = κ_max·σ·√9. The Gaussian (Fisher) approximation is adequate when γ < 0.34, i.e. when ρ_c > 8.7σ.
+- **Intrinsic curvature** via the Gauss equation, which is exact in flat data space: sectional curvature K(a,b) = B_aa·B_bb − |B_ab|², and the scalar curvature.
+- Each eigendirection k gets a **curvature radius** ρ_k = 1/|B_kk|. It is compared with the step-3 width W_k through the **sagitta** W_k²/(8ρ_k), the distance by which the surface departs from straight across its full width.
+- **"Data-constrained" variants** use only the eigendirections the data constrain better than the prior (λ_k > 12σ² in the unit box). That is a median of 5 directions at 30 ppm and 4 at 50 ppm.
+
+**Reliability.** Second derivatives are where an emulator is weakest, and whitening amplifies their errors along sloppy directions. Every quantity is therefore computed for each ensemble member too, and a planet counts as reliable for a quantity only if the 4 members agree within a factor of 1.5. The members agree well on the curvature along v2–v5 (reliable at 74–95% of planets) and poorly along v8–v9 (13–22%). So κ_max over all directions, which is dominated by v9, is reliable at only 17% of planets; the data-constrained κ_max is reliable at 67–78%. Among reliable planets, the codes agree on the data-constrained ρ_c to a median of 0.03–0.04 dex.
+
+### Results (numbers are ranges over the three codes)
+
+**1. The surface is strongly curved: it is a curled ribbon, not a flat one** (`radius_vs_width.png`).
+
+| | v1 | v2 | v3 | v4 | v5 | v6 | v7 | v8 | v9 |
+|---|---|---|---|---|---|---|---|---|---|
+| curvature radius ρ_k (ppm, median) | ~2×10⁹ | 1,400 | 290 | 190–210 | 145–155 | 80 | 35 | 11–15 | 9–13 |
+| width W_k (ppm, median) | 3×10⁵ | 3,500 | 960 | 500 | 285 | 142 | 76 | 50–62 | 64–71 |
+| sagitta W²/8ρ (ppm, median) | 6 | 900 | 340 | 140–180 | 75 | 42 | 21–38 | 10–33 | 19–21 |
+| planets with sagitta > 30 ppm | 30% | 80% | 73% | 67% | 60% | 53% | 46–53% | 41–50% | 44–46% |
+
+- Along Rp/Rs (v1) the surface is flat.
+- Along every other direction the radius of curvature is only 0.25–0.5 of the width. Across its full extent the surface turns through 2–4 radians, and the radius shrinks in step with the width. So the hyper-ribbon from step 3 is a geometric series in curvature as well as in width, as Transtrum et al. (2011) describe for sloppy models.
+- It is not "low curvature" relative to the widths, though, unlike the examples in Transtrum et al. (2010). The sagitta exceeds 30 ppm at roughly half the planets even along the sloppiest directions, so over the prior range the bending is visible at realistic noise.
+- Physically, each abundance and T moves a feature through appearance, growth and saturation, which traces a strongly bent curve in data space.
+
+**2. Along the sloppy directions the focal set lies almost on the surface, but crossing it changes nothing** (`focal_distance.png`, dashed).
+- The most curved direction is v9 at 86–89% weight (v8 at 5%). ρ_c has a median of 1.1–1.3 ppm over all planets (5–95%: 0.005–100 ppm), or 5–7 ppm over reliable planets. So at realistic noise most planets' data lie beyond the focal set: P_focal = 59–63% on average at 30 ppm, and 42–47% even at 10 ppm.
+- The validation (`focal_validation.png`, top row) shows such crossings do split the minimum, but the two new minima differ from the old critical point by Δχ² ≤ 0.014 at 30 ppm. The surface is so thin in those directions that the bending is invisible. This is the flat-valley behaviour seen in step 2.
+
+**3. Along the directions the data constrain, the focal set is about 5σ away and noise rarely crosses it** (`focal_distance.png`, solid; `focal_probability.png`).
+- At σ = 30 ppm the data-constrained ρ_c has a median of 160–175 ppm (5%: 56 ppm; 16%: 80 ppm). The median ρ_c/σ is 5.1–5.8 at both 30 and 50 ppm, because fewer directions count as constrained at the higher noise.
+- It depends on feature height: the median ρ_c is 92–99 ppm for features of 30–210 ppm, 144 ppm for 210–500 ppm, and 275–500 ppm for features above 500 ppm. Below 30 ppm only Rp/Rs is constrained, and it is flat.
+- The probability that noise crosses this part of the focal set is small. P_focal averages 0.6–0.7% over planets at both 30 and 50 ppm; 11–13% of planets have P > 1% and 3.7–4.7% have P > 5%. The highest values are for features of 30–210 ppm (mean P ≈ 1–1.5%) and for the very largest features above 3,000 ppm (4–6%, but only about 25 planets, where the emulator is also least accurate).
+- **The Gaussian approximation still often fails.** By the Bates–Watts criterion the posterior is noticeably non-Gaussian at 60–66% of planets. The curvature bends the posterior into a banana far more often than it splits it.
+
+**4. When the data do cross the focal set, a genuine split appears, but with a small barrier** (`focal_validation.png`, bottom row).
+- Data are placed at t·ρ_c along the most curved data-constrained normal. The exact χ² Hessian follows the predicted 1 − t to within 5×10⁻⁴ in every case. The minimum stays put for t < 1 and splits for t > 1.
+- For the most curved planets (ρ_c ≈ σ), the barrier between the two new minima is Δχ² ≈ 0.1 at t = 1.1, 0.5–0.6 at t = 1.5 and 1.3–3.2 at t = 2.5, at 30 ppm. The new minima often run to a prior box face.
+- For typical planets (ρ_c ≈ 160 ppm), data that far off the surface (≥ 5σ) already destabilise the sloppy directions before the constrained one. Δχ² reaches 2–3 at t ≈ 0.9 and 55–73 at t = 2.5 (13σ), but noise that large is not realistic.
+- So at realistic noise a focal crossing broadens and flattens the χ² basin instead of creating a separate mode. That is what step 2 measured directly: no barrier ≥ 0.5 survived refinement in 1,800 noisy pairs per run.
+
+**5. Intrinsic curvature.** In the stiffest plane (v1–v2), the sectional curvature radius has a median of 4.5–6.9×10⁶ ppm, measurable at 40–57% of planets, so the surface is intrinsically flat where the data are most informative. In the sloppiest plane (v8–v9) the radius is about 30–46 ppm, comparable to the noise, and mostly negative (saddle-like; 76–87% of cases). But the ensemble members agree there at only 5–6.5% of planets. The scalar curvature, which those planes dominate, agrees between members at only about 2% of planets, so it is reported but not interpreted. Intrinsic curvature therefore matters only along the sloppy chemical directions, where these emulators cannot measure it reliably.
+
+### What steps 3 and 4 say about the project question
+
+- **Eigenvalue hierarchy.** The model manifold is sloppy. Rp/Rs alone is 5 decades stiffer than anything else. The other 8 directions fall geometrically, about 0.5–1.4 decades apart, over 6 decades. All of them scale with (feature height)², and the featureless edge is where they vanish together. Among the step-1 hypotheses, Rp/Rs and the amplitude are confirmed as the stiff directions. The Rs–Rp–Mp scaling is weak but not the sloppiest; that place belongs to chem3, chem5 and chem2.
+- **Curvature.** Strong. Extrinsic curvature radii are 0.25–0.5 of the widths along every direction except Rp/Rs, so the surface is a curled hyper-ribbon. Intrinsic curvature is negligible in the stiff plane; in the sloppy planes it cannot be pinned down with these emulators.
+- **Boundaries.** The prior box faces cut the ribbon. When minima split they usually run to a face. The featureless limit is a boundary where 8 directions collapse together.
+- **Folds and caustics.** The focal set exists and sits very close to the surface along the sloppy directions, so noise crosses it routinely, but those crossings produce only invisible ripples. Along the constrained directions it lies about 5σ out, and crossing it has a probability below about 1% per planet at 30–50 ppm. Even then it creates only shallow splits unless the data are far beyond it. **For this cloud-free, 9-parameter model, focal-set crossings are real but are not a practical source of multimodal posteriors.** The geometry predicts non-Gaussian, banana-shaped posteriors at most planets instead. Step 5 can test both predictions with full posterior sampling on the emulators, including whether planets with high P_focal, mostly features of 30–210 ppm, show more multimodality.
+
+**Caveats.**
+- All second-derivative results come from emulators and are trusted only where the 4 members agree. Curvature along v8–v9 and the scalar curvature are mostly not measurable this way. A finite-difference check with the radiative-transfer codes themselves at a few planets would settle them.
+- P_focal is evaluated at the true planet. That is the local criterion; it does not count distant secondary minima, which step 2 searched for directly.
+- There are no cloud parameters. Clouds add a degenerate, strongly nonlinear direction, which is the most likely way to bring the focal set closer.
+
+**Outputs** in `runs/curvature/`:
+- `summary.json` (including the validation rows);
+- `{code}_curvature.npz`: per planet, κ_max and its tangent and normal directions; the data-constrained versions; normal curvature per direction; sectional and scalar curvature; the focal-crossing samples λ_max(Σ z_k B_k); and the member-agreement ratios;
+- plots: `focal_distance.png`, `radius_vs_width.png`, `focal_probability.png`, `focal_validation.png`.
+
+### References
+- Bates, D. M., & Watts, D. G. (1980). Relative curvature measures of nonlinearity. *Journal of the Royal Statistical Society B*, 42(1), 1–25. https://doi.org/10.1111/j.2517-6161.1980.tb01094.x
+- Gutenkunst, R. N., et al. (2007). Universally sloppy parameter sensitivities in systems biology models. *PLoS Computational Biology*, 3(10), e189. https://doi.org/10.1371/journal.pcbi.0030189
+- Transtrum, M. K., Machta, B. B., & Sethna, J. P. (2010). Why are nonlinear fits to data so challenging? *Physical Review Letters*, 104, 060201. https://doi.org/10.1103/physrevlett.104.060201
+- Transtrum, M. K., Machta, B. B., & Sethna, J. P. (2011). Geometry of nonlinear least squares with applications to sloppy models and optimization. *Physical Review E*, 83, 036701. https://doi.org/10.1103/physreve.83.036701
