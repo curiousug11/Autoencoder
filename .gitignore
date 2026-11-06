@@ -1,5 +1,5 @@
 __pycache__/
 *.pyc
 runs/retrieval_models/
-runs/weight_space/branches/
-runs/weight_space/rebasin/aligned.pt
+runs/weight_averaging/branches/
+runs/weight_averaging/rebasin/aligned.pt

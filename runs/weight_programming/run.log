@@ -1,0 +1,28 @@
+/home/user/Autoencoder/weight_programming.py:159: DeprecationWarning: __array_wrap__ must accept context and return_scalar arguments (positionally) in the future. (Deprecated NumPy 2.0)
+  axes[1].plot(wavelength[order], u[order, -1].numpy() * float(np.sign(u[:, -1].sum())), "o-", ms=3)
+{
+  "output_layer": {
+    "weakest_left_singular_value": 0.06814465671777725,
+    "next_weakest": 0.2979598045349121,
+    "strongest": 4.363118648529053,
+    "overlap_of_weakest_direction_with_ones": 0.9978525042533875,
+    "sum_of_output_bias": 0.18708649277687073
+  },
+  "input_layer": {
+    "fraction_of_weight_energy_along_ones": 0.02272091433405876
+  },
+  "outputs": {
+    "rms_of_spectrum_mean": 4.579792221193202e-05,
+    "mean_of_spectrum_std": 0.9999921917915344
+  }
+}
+validation grid (alpha/K/mode -> val MSE): {'0.25/1/plain': '5.235e-05', '0.25/2/plain': '4.991e-05', '0.25/3/plain': '4.874e-05', '0.5/1/plain': '4.934e-05', '0.5/2/plain': '4.809e-05', '0.5/3/plain': '4.821e-05', '0.75/1/plain': '4.824e-05', '0.75/2/plain': '4.841e-05', '0.75/3/plain': '4.916e-05', '1.0/1/plain': '4.916e-05', '1.0/2/plain': '4.948e-05', '1.0/3/plain': '5.029e-05', '0.25/1/select': '5.238e-05', '0.25/2/select': '4.995e-05', '0.25/3/select': '4.871e-05', '0.5/1/select': '4.935e-05', '0.5/2/select': '4.791e-05', '0.5/3/select': '4.778e-05', '0.75/1/select': '4.811e-05', '0.75/2/select': '4.781e-05', '0.75/3/select': '4.827e-05', '1.0/1/select': '4.851e-05', '1.0/2/select': '4.857e-05', '1.0/3/select': '4.876e-05'}
+plain: hand-written network vs loop: max |difference| 5.72e-06, spectra differing by > 1e-4: 0 (near-ties of the gate)
+select: hand-written network vs loop: max |difference| 7.95e-03, spectra differing by > 1e-4: 42 (near-ties of the gate)
+
+model                                                   code  nonzero     train       val      test    median       p95       p99 ppm med ppm p99
+original                                                   8   114972 3.849e-05 5.697e-05 5.972e-05 1.843e-05 1.535e-04 5.339e-04    0.76    97.8
+edit: output centering                                     8   114972 3.849e-05 5.697e-05 5.972e-05 1.843e-05 1.534e-04 5.339e-04    0.76    97.8
+program: residual feedback (alpha=0.5, K=2)                8   564164 3.708e-05 4.809e-05 5.486e-05 1.688e-05 1.367e-04 5.059e-04    0.73    85.6
+program: feedback + self-check (alpha=0.5, K=3)            8   905021 3.646e-05 4.778e-05 5.252e-05 1.687e-05 1.363e-04 5.043e-04    0.73    83.6
+construction: parallel ensemble of 3 AEs                  24   344812 2.951e-05 4.074e-05 4.292e-05 1.411e-05 1.176e-04 4.320e-04    0.66    77.8

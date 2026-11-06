@@ -1,0 +1,200 @@
+{
+  "layers": {
+    "encoder.0": {
+      "shape": [
+        256,
+        52
+      ],
+      "fro": 15.637567520141602,
+      "sv_max": 5.361599445343018,
+      "sv_min": 0.874934196472168,
+      "sv_min_over_max": 0.16318529844284058
+    },
+    "encoder.2": {
+      "shape": [
+        128,
+        256
+      ],
+      "fro": 24.199377059936523,
+      "sv_max": 8.17956829071045,
+      "sv_min": 0.32838183641433716,
+      "sv_min_over_max": 0.0401465967297554
+    },
+    "encoder.4": {
+      "shape": [
+        64,
+        128
+      ],
+      "fro": 12.735612869262695,
+      "sv_max": 4.731707572937012,
+      "sv_min": 0.2548602819442749,
+      "sv_min_over_max": 0.05386222153902054
+    },
+    "encoder.6": {
+      "shape": [
+        32,
+        64
+      ],
+      "fro": 7.239683151245117,
+      "sv_max": 3.889470100402832,
+      "sv_min": 0.26675158739089966,
+      "sv_min_over_max": 0.06858301162719727
+    },
+    "encoder.8": {
+      "shape": [
+        16,
+        32
+      ],
+      "fro": 3.790015459060669,
+      "sv_max": 2.1140291690826416,
+      "sv_min": 0.33489108085632324,
+      "sv_min_over_max": 0.15841364860534668
+    },
+    "encoder.10": {
+      "shape": [
+        8,
+        16
+      ],
+      "fro": 2.3552446365356445,
+      "sv_max": 1.490538239479065,
+      "sv_min": 0.3757585883140564,
+      "sv_min_over_max": 0.25209590792655945
+    },
+    "decoder.0": {
+      "shape": [
+        16,
+        8
+      ],
+      "fro": 2.442960023880005,
+      "sv_max": 1.3047205209732056,
+      "sv_min": 0.5320345163345337,
+      "sv_min_over_max": 0.4077766239643097
+    },
+    "decoder.2": {
+      "shape": [
+        32,
+        16
+      ],
+      "fro": 4.774090766906738,
+      "sv_max": 2.5510776042938232,
+      "sv_min": 0.37018883228302,
+      "sv_min_over_max": 0.14511077105998993
+    },
+    "decoder.4": {
+      "shape": [
+        64,
+        32
+      ],
+      "fro": 8.040938377380371,
+      "sv_max": 3.9516501426696777,
+      "sv_min": 0.317056804895401,
+      "sv_min_over_max": 0.08023402839899063
+    },
+    "decoder.6": {
+      "shape": [
+        128,
+        64
+      ],
+      "fro": 13.680024147033691,
+      "sv_max": 5.05182409286499,
+      "sv_min": 0.30972883105278015,
+      "sv_min_over_max": 0.0613102950155735
+    },
+    "decoder.8": {
+      "shape": [
+        256,
+        128
+      ],
+      "fro": 31.479280471801758,
+      "sv_max": 13.256786346435547,
+      "sv_min": 0.47078266739845276,
+      "sv_min_over_max": 0.03551257774233818
+    },
+    "decoder.10": {
+      "shape": [
+        52,
+        256
+      ],
+      "fro": 12.682745933532715,
+      "sv_max": 4.363120079040527,
+      "sv_min": 0.06814464181661606,
+      "sv_min_over_max": 0.015618328005075455
+    }
+  },
+  "output_layer": {
+    "weakest_left_singular_value": 0.06814465671777725,
+    "next_weakest": 0.2979598045349121,
+    "strongest": 4.363118648529053,
+    "overlap_of_weakest_direction_with_ones": 0.9978525042533875,
+    "sum_of_output_bias": 0.18708649277687073
+  },
+  "input_layer": {
+    "fraction_of_weight_energy_along_ones": 0.02272091433405876
+  },
+  "gelu_layers": [
+    {
+      "units": 256,
+      "always_off": 0,
+      "always_linear": 0,
+      "min_preactivation_std": 0.2478756606578827
+    },
+    {
+      "units": 128,
+      "always_off": 0,
+      "always_linear": 0,
+      "min_preactivation_std": 0.6541876196861267
+    },
+    {
+      "units": 64,
+      "always_off": 0,
+      "always_linear": 0,
+      "min_preactivation_std": 0.7885542511940002
+    },
+    {
+      "units": 32,
+      "always_off": 0,
+      "always_linear": 0,
+      "min_preactivation_std": 0.771999716758728
+    },
+    {
+      "units": 16,
+      "always_off": 0,
+      "always_linear": 0,
+      "min_preactivation_std": 0.5760680437088013
+    },
+    {
+      "units": 16,
+      "always_off": 0,
+      "always_linear": 0,
+      "min_preactivation_std": 0.4763818681240082
+    },
+    {
+      "units": 32,
+      "always_off": 0,
+      "always_linear": 0,
+      "min_preactivation_std": 0.40204328298568726
+    },
+    {
+      "units": 64,
+      "always_off": 0,
+      "always_linear": 0,
+      "min_preactivation_std": 0.20964469015598297
+    },
+    {
+      "units": 128,
+      "always_off": 0,
+      "always_linear": 0,
+      "min_preactivation_std": 0.2317713499069214
+    },
+    {
+      "units": 256,
+      "always_off": 0,
+      "always_linear": 0,
+      "min_preactivation_std": 0.19807183742523193
+    }
+  ],
+  "outputs": {
+    "rms_of_spectrum_mean": 4.579792221193202e-05,
+    "mean_of_spectrum_std": 0.9999921917915344
+  }
+}

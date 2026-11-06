@@ -19,13 +19,13 @@ the POS spectra with split seed 42. This script works directly on its weights:
   all       finetune, rebasin, soup.
 
 Usage:
-    python weight_space.py all
-    python weight_space.py finetune --workers 4
-    python weight_space.py rebasin --seeds runs/weight_space/seeds/seed_43/model.pt ...
-    python weight_space.py soup
+    python weight_averaging.py all
+    python weight_averaging.py finetune --workers 4
+    python weight_averaging.py rebasin --seeds runs/weight_averaging/seeds/seed_43/model.pt ...
+    python weight_averaging.py soup
 
-Everything goes to runs/weight_space/. The selected model is saved as
-runs/weight_space/best/model.pt in the same format as train.py.
+Everything goes to runs/weight_averaging/. The selected model is saved as
+runs/weight_averaging/best/model.pt in the same format as train.py.
 """
 
 import argparse
@@ -47,7 +47,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 BEST = "runs/ae_wide_cosine/scheduler_cosine/seed_42/model.pt"
-OUT = Path("runs/weight_space")
+OUT = Path("runs/weight_averaging")
 
 # name, batch-order seed, learning rate, epochs, schedule
 BRANCHES = [
@@ -73,8 +73,8 @@ def parse_args():
     p.add_argument("stage", choices=["finetune", "rebasin", "soup", "all"])
     p.add_argument("--best", default=BEST, help="checkpoint of the model to improve")
     p.add_argument("--seeds", nargs="+",
-                   default=["runs/weight_space/seeds/seed_43/model.pt",
-                            "runs/weight_space/seeds/seed_44/model.pt"],
+                   default=["runs/weight_averaging/seeds/seed_43/model.pt",
+                            "runs/weight_averaging/seeds/seed_44/model.pt"],
                    help="independently trained models (same split!) to align onto --best")
     p.add_argument("--out", default=str(OUT))
     p.add_argument("--workers", type=int, default=4)

@@ -177,13 +177,70 @@ This 2×2 comparison uses seeds 42 and 43 in every configuration, so results can
 - **Both together:** about 3.2x lower. The two effects roughly multiply.
 - **The plateau schedule with patience 20 is unreliable.** The learning rate can shrink too quickly, and the run then stops early on a temporary plateau. Cosine with patience 50 avoids this.
 
-## Weight-space methods on the best autoencoder (`weight_space.py`, `runs/weight_space/`)
+## Weight-space programming on the best autoencoder (`weight_programming.py`, `runs/weight_programming/`)
 
-Starting point: the best noiseless model, `runs/ae_wide_cosine` seed 42 (`52-256-128-64-32-16-8`, GELU, cosine, POS, split seed 42). Everything below operates on its weights. Every candidate is chosen by **validation** MSE. Test MSE is reported but never used for selection.
+This section reads the trained weights of the best noiseless model, `runs/ae_wide_cosine` seed 42, and writes new weights by hand, in the sense of [weight-space programming](https://rikiyat.github.io/blog/weight-space-programming/).
+
+Rules:
+- **Not allowed:** gradient descent, any training, fitting weights to data, or search over weights.
+- **Allowed:** forward passes on the validation split, used only to measure a hand-designed edit. The edit has a few discrete options (24 grid points).
+- The test split is used once, for this table.
 
 ```
-python weight_space.py all          # finetune branches (~35 min on 4 cores), re-basin, soups + selection
-python weight_space.py soup         # re-evaluate and re-select from saved branches
+python weight_programming.py      # ~5 s on CPU
+```
+
+**1. Reading the weights** (`weight_report.json`, `weights.png`)
+- **The network has learned that its outputs have zero mean.** The output layer's weakest singular direction (σ = 0.068, against a largest of 4.36) overlaps the all-ones vector at 0.998. The outputs average to zero (RMS 5e-5) and have unit std (0.99999).
+- **No weight edit can fix the mean or the scale, because they are already right.** Exactly centering the output layer, `W ← (I − 11ᵀ/52) W`, cannot increase any spectrum's error, and it lowers the MSE by only 0.004%.
+- **There is nothing to prune.** No hidden unit is dead or always linear, and every weight matrix is full rank.
+- **Most of the remaining error is seed-specific weight noise, not systematic bias.** The per-bin mean error is less than 1e-8 of the MSE, and averaging the outputs of 3 seeds removes 28% of it.
+
+**2. Program: residual-feedback encoder.** The decoder and the 8-d code are unchanged, and only the encoder is rewritten:
+
+    u₀ = x,   u_{k+1} = u_k + α (x − AE(u_k)),   code = E(u_K),   output = D(code)
+
+- **Why it works:** AE(·) is close to a projection onto the spectrum manifold. Feeding the residual back corrects the part of the error that lies along the manifold (a Richardson iteration on the trained encoder/decoder pair).
+- **Optional self-check:** the encoder also decodes E(x) and E(u_K) internally and keeps the code whose L1 residual against x is smaller.
+- **It is one plain Linear/GELU network with hand-written weights:**
+  - The trained layers are copied in, and consecutive linear maps are fused. The bottleneck of each unrolled copy, D₁·E₆, becomes one layer, and each copy's output layer is folded into the next layer.
+  - x and u_k are carried exactly through every GELU layer by unit pairs, using GELU(t) − GELU(−t) = t.
+  - The self-check is written from GELU units: |t| ≈ (GELU(ct) + GELU(−ct))/c with c = 1e5; a step from a difference of two GELUs; and the gate z₀ + s(z₂ − z₀), written as GELU(d + M(s−1)) − GELU(−d + M(s−1)) with M = 20. The gate is exact when s is 0 or 1.
+  - The written network matches a Python loop of the same computation to max |Δ| = 6e-6. With the self-check, 42 of 6,604 val spectra differ by more than 1e-4; these are near-ties where the gate is soft.
+- **Choice:** α, K and the self-check were chosen by val MSE from α ∈ {0.25, 0.5, 0.75, 1}, K ∈ {1, 2, 3}. The selected setting is α = 0.5, K = 3, with the self-check.
+
+**3. Construction: parallel ensemble network.** The best model and two more seeds trained on the same split (`runs/weight_averaging/seeds/`) are written block-diagonally into one wider `Autoencoder`, `52-768-384-192-96-48-24`. Its output layer averages the three. The result is exact, but the code is 24 numbers instead of 8.
+
+| model | code size | nonzero weights | train | val | test | test median | test p95 | test p99 | RMS ppm median / p99 |
+|---|---|---|---|---|---|---|---|---|---|
+| original | 8 | 115k | 3.85e-5 | 5.70e-5 | 5.97e-5 | 1.84e-5 | 1.54e-4 | 5.34e-4 | 0.76 / 98 |
+| edit: exact output centering | 8 | 115k | 3.85e-5 | 5.70e-5 | 5.97e-5 | 1.84e-5 | 1.53e-4 | 5.34e-4 | 0.76 / 98 |
+| program: residual feedback (α 0.5, K 2) | 8 | 564k | 3.71e-5 | 4.81e-5 | 5.49e-5 | 1.69e-5 | 1.37e-4 | 5.06e-4 | 0.73 / 86 |
+| **program: feedback + self-check (α 0.5, K 3), selected** | **8** | 905k | **3.65e-5** | **4.78e-5** | **5.25e-5** | **1.69e-5** | **1.36e-4** | **5.04e-4** | **0.73 / 84** |
+| construction: parallel ensemble of 3 AEs | 24 | 345k | 2.95e-5 | 4.07e-5 | 4.29e-5 | 1.41e-5 | 1.18e-4 | 4.32e-4 | 0.66 / 78 |
+
+The nonzero-weight counts include the copies of the same trained weights in each unrolled pass and the ±1 carry entries. The programmed network contains no new learned numbers: everything is either a copy or product of the 115k trained weights, or one of the constants α, c, M.
+
+- **With the same decoder and the same 8-d code, test MSE drops by 12% (5.97e-5 → 5.25e-5), with no training.**
+  - The median drops 8%, p95 drops 11%, and the 99th-percentile residual falls from 98 to 84 ppm.
+  - About 80% of spectra improve, in every split.
+  - Every wavelength bin and every temperature octile improves. The largest gain is at 1000–1500 K (−17 to −22%) and the smallest is for the hottest planets (−6%) (`feedback_vs_original.png`).
+- **The mean is driven by a few very poorly reconstructed spectra, so the size of the gain depends on the split.** Plain feedback gives −16% on val, −8% on test and −4% on train. Feedback raises the error of some of the worst spectra.
+  - The self-check fixes most of this: −16% val, −12% test, −5% train, because the encoder falls back to the original code when feeding back makes things worse.
+  - The median gain is a steady 7–8% in all three splits.
+- **The cost is compute, not information.** The encoder has 44 linear layers instead of 6 and costs about 5 passes of the original network: 3 feedback passes, the final encoding, and one decode for the self-check. The decoder and the code size are unchanged.
+- **The parallel ensemble is the strongest result (−28% test), but it is not a like-for-like autoencoder.** Its code is 24-dimensional, and it needs two other trained networks. Chaining the other seeds through the 8-d code instead gives only −3% val.
+- For comparison, the gradient-based approaches in the next section reach 4.8–5.0e-5 test MSE, with 1000 extra epochs of training.
+
+## Weight averaging with extra fine-tuning (`weight_averaging.py`, `runs/weight_averaging/`)
+
+This section is **not** weight-space programming: every model here comes from additional gradient-descent training, starting from the best checkpoint. It is kept for comparison.
+
+Starting point: the best noiseless model, `runs/ae_wide_cosine` seed 42 (`52-256-128-64-32-16-8`, GELU, cosine, POS, split seed 42). Every candidate is chosen by **validation** MSE. Test MSE is reported but never used for selection.
+
+```
+python weight_averaging.py all          # finetune branches (~35 min on 4 cores), re-basin, soups + selection
+python weight_averaging.py soup         # re-evaluate and re-select from saved branches
 ```
 
 Methods tried:
@@ -229,7 +286,7 @@ The endpoints themselves are about 5.7e-5.
   - The lr 3e-4 long-run EMAs share a basin (midpoint val 4.41e-5) but are also nearly identical (distance 0.39), so their soup again matches the single models.
   - The lr 1e-3 branch is in a different basin. Averaging it with the others breaks the model (val 6.4e-3), and the greedy soup correctly rejects it.
 - **Re-basin does not work for this architecture.** After alignment, the interpolation midpoint is about 10⁴× worse than either endpoint. Permutation alignment needs wide layers, and this network has 16- and 8-unit layers next to the bottleneck. Weight matching lowers the barrier only slightly.
-  - The seeds used here were retrained on split 42 (`runs/weight_space/seeds/`, test MSE 5.82e-5 and 5.97e-5).
+  - The seeds used here were retrained on split 42 (`runs/weight_averaging/seeds/`, test MSE 5.82e-5 and 5.97e-5).
   - The checkpoints in `runs/ae_wide_cosine` for seeds 43 and 44 were trained with split seed = init seed, so their test MSEs (7.1e-5, 1.1e-4) are on different test sets than seed 42's.
 - **Extrapolating along the original → EMA direction does not help.** The val MSE is 5.3e-5 at 1.1× and 8.3e-5 at 1.2×. The path between the original and the EMA also has a barrier (9.5e-5 at the midpoint), so the EMA is not a nearby refinement of the original weights; fine-tuning moved to a different, better point.
 
@@ -240,7 +297,7 @@ Outputs:
 - `test_error_hist.png`
 - `finetune_curves.png`
 - `rebasin/rebasin_results.json`
-- The branch checkpoints (`branches/`) are git-ignored; `python weight_space.py finetune` recreates them.
+- The branch checkpoints (`branches/`) are git-ignored; `python weight_averaging.py finetune` recreates them.
 
 ## Cross-code anomaly detection (`anomaly.py`, `runs/anomaly/`)
 
