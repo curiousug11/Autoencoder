@@ -536,8 +536,11 @@ def plots(rows, a):
     axs[0].set_xscale("log")
     axs[0].set_yscale("log")
     axs[0].set_xlabel("Λ_dc = λ_max(Σ ε_k B_k) for the actual noise (data-constrained directions)")
-    axs[0].set_ylabel("posterior weight of separate modes\n(max of SMC share and IS mass; floored)")
-    axs[0].legend(fontsize=6.5)
+    axs[0].set_ylabel("posterior weight of separate modes\n(max of SMC share and IS mass)")
+    axs[0].set_ylim(2e-3, 1.5)
+    axs[0].text(0.02, 0.035, "no separate mode (floored)", fontsize=6.5, transform=axs[0].transAxes)
+    axs[0].text(0.02, 0.62, "Λ_dc = 0\n(floored)", fontsize=6.5, transform=axs[0].transAxes)
+    axs[0].legend(fontsize=6.5, loc="center right")
     for ax, key, lab in ((axs[1], "gamma_dc", "intrinsic γ_N"), (axs[2], "gammaT_dc", "parameter-effects γ_T")):
         for c in codes:
             R = [r for r in rows if r["code"] == c]
@@ -549,7 +552,12 @@ def plots(rows, a):
         ax.set_yscale("log")
         ax.set_xlabel(f"Bates–Watts {lab} at the truth (data-constrained)")
         ax.set_ylabel("median factor between posterior and\nFisher+prior widths (over 9 parameters)")
-        ax.legend(fontsize=6.5)
+        if key == "gamma_dc":
+            ax.text(1.3e-4, 1.13, "one data-constrained\ndirection: γ_N = 0", fontsize=6.5)
+        x = np.array([r[key] for r in rows])
+        e = np.array([r["width_error"] for r in rows])
+        ax.set_title(f"Spearman ρ = {spearmanr(x, e)[0]:.2f} (all codes and σ)", fontsize=8)
+        ax.legend(fontsize=6.5, loc="upper left")
     fig.tight_layout()
     fig.savefig(os.path.join(a.out, "posterior_vs_geometry.png"), dpi=150)
     plt.close(fig)
