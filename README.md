@@ -177,6 +177,71 @@ This 2×2 comparison uses seeds 42 and 43 in every configuration, so results can
 - **Both together:** about 3.2x lower. The two effects roughly multiply.
 - **The plateau schedule with patience 20 is unreliable.** The learning rate can shrink too quickly, and the run then stops early on a temporary plateau. Cosine with patience 50 avoids this.
 
+## Weight-space methods on the best autoencoder (`weight_space.py`, `runs/weight_space/`)
+
+Starting point: the best noiseless model, `runs/ae_wide_cosine` seed 42 (`52-256-128-64-32-16-8`, GELU, cosine, POS, split seed 42). Everything below operates on its weights. Every candidate is chosen by **validation** MSE. Test MSE is reported but never used for selection.
+
+```
+python weight_space.py all          # finetune branches (~35 min on 4 cores), re-basin, soups + selection
+python weight_space.py soup         # re-evaluate and re-select from saved branches
+```
+
+Methods tried:
+1. **SWA / EMA:** continue training from the checkpoint at a constant learning rate, and average the weights along the way. SWA is a uniform average of the per-epoch weights. EMA uses per-step decays of 0.999 and 0.9999.
+2. **Model soups:** fine-tune several branches from the checkpoint, differing only in batch order, then average their weights. The uniform soup averages all of them. The greedy soup adds an ingredient only if the val MSE improves.
+3. **Git Re-Basin:** permutation-align independently trained seeds onto the best model, using weight matching and activation matching, then interpolate or average them.
+4. **Control:** a plain fine-tune with the same 1000-epoch budget, cosine 3e-4 → 1e-7, with no averaging. It separates the effect of averaging from the effect of extra training.
+
+Test results (z-normalised MSE; ppm = RMS residual in transit depth):
+
+| model | val | test | median | p95 | p99 | RMS ppm median / p99 |
+|---|---|---|---|---|---|---|
+| original (best seed 42) | 5.70e-5 | 5.97e-5 | 1.84e-5 | 1.54e-4 | 5.34e-4 | 0.76 / 98 |
+| **EMA 0.999, constant lr 1e-3, 1000 ep (selected)** | **4.41e-5** | **4.81e-5** | **1.30e-5** | 1.28e-4 | 5.38e-4 | 0.64 / 91 |
+| EMA 0.999, constant lr 3e-4, 1000 ep (3 seeds) | 4.41e-5 | 4.96e-5 | 1.28e-5 | **1.19e-4** | **4.49e-4** | 0.62 / 82 |
+| uniform soup of the three lr 3e-4 EMAs | 4.41e-5 | 4.96e-5 | 1.28e-5 | 1.19e-4 | 4.49e-4 | 0.62 / 82 |
+| EMA 0.9999, constant lr 3e-4, 1000 ep | 4.67e-5 | 5.19e-5 | 1.49e-5 | 1.22e-4 | 4.52e-4 | 0.68 / 84 |
+| control: cosine fine-tune 3e-4, 1000 ep, no averaging | 4.68e-5 | 5.13e-5 | 1.37e-5 | 1.23e-4 | 4.63e-4 | 0.65 / 81 |
+| raw weights, constant lr 3e-4, 1000 ep (no averaging) | 4.96–5.27e-5 | 5.51–5.79e-5 | | | | |
+| SWA, constant lr 3e-4, 1000 ep | 5.39e-5 | 5.80e-5 | 1.95e-5 | 1.37e-4 | 4.91e-4 | 0.80 / 89 |
+| EMA 0.999, constant lr 3e-4, 300 ep | 5.13e-5 | 5.48e-5 | 1.59e-5 | 1.40e-4 | 5.05e-4 | 0.70 / 86 |
+| uniform soup, 4 cosine branches (1e-4, 300 ep) | 5.44e-5 | 5.73e-5 | 1.72e-5 | 1.45e-4 | 5.01e-4 | 0.73 / 94 |
+| re-basin merge of 3 seeds (weight matching) | 0.58 | 0.58 | | | | 126 / 7600 |
+
+Re-basin barriers, the val MSE at the interpolation midpoint minus the linear blend of the endpoints (`rebasin/interpolation.png`):
+
+| pair | naive | weight matching | activation matching |
+|---|---|---|---|
+| seed 42 ↔ 43 | 0.68 | 0.67 | 0.75 |
+| seed 42 ↔ 44 | 0.69 | 0.54 | 0.59 |
+
+The endpoints themselves are about 5.7e-5.
+
+- **EMA of the weights at a constant learning rate is the method that works.** Test MSE falls by 19% (5.97e-5 → 4.81e-5) and the median by 29%. With lr 3e-4, p95 and p99 also fall by 23% and 16%, so the improvement reaches the hard tail too: the 99th-percentile residual drops from 98 to 82 ppm. The selected lr 1e-3 model and the lr 3e-4 models tie on val (4.410 vs 4.412e-5). The lr 3e-4 model has the better tail, so it is the safer choice if the worst spectra matter more than the mean, as they do for anomaly detection.
+- **Some of the gain is extra training, but averaging adds to it.**
+  - A plain annealed fine-tune with the same 1000 epochs reaches 4.68e-5 val / 5.13e-5 test. That is roughly two thirds of the improvement.
+  - EMA adds a further 6% on val and 3–6% on test over the control, at the same cost.
+  - Compared with the raw weights from the same trajectory, the EMA is 11–16% better.
+  - The EMA curves are still falling at 1000 epochs (`finetune_curves.png`), so a longer run should improve further.
+- **SWA (a uniform average from the start of fine-tuning) is worse than EMA.** It weights the early weights too heavily while the trajectory is still drifting. At lr 1e-3 it diverges (val 1.7e-3), because the run leaves the starting basin.
+- **Soups give no gain here.**
+  - Low-lr branches that differ only in batch order end up almost identical: the weight distance between them is 0.07, against 2.4 to the starting point. Their soup equals any one of them.
+  - The lr 3e-4 long-run EMAs share a basin (midpoint val 4.41e-5) but are also nearly identical (distance 0.39), so their soup again matches the single models.
+  - The lr 1e-3 branch is in a different basin. Averaging it with the others breaks the model (val 6.4e-3), and the greedy soup correctly rejects it.
+- **Re-basin does not work for this architecture.** After alignment, the interpolation midpoint is about 10⁴× worse than either endpoint. Permutation alignment needs wide layers, and this network has 16- and 8-unit layers next to the bottleneck. Weight matching lowers the barrier only slightly.
+  - The seeds used here were retrained on split 42 (`runs/weight_space/seeds/`, test MSE 5.82e-5 and 5.97e-5).
+  - The checkpoints in `runs/ae_wide_cosine` for seeds 43 and 44 were trained with split seed = init seed, so their test MSEs (7.1e-5, 1.1e-4) are on different test sets than seed 42's.
+- **Extrapolating along the original → EMA direction does not help.** The val MSE is 5.3e-5 at 1.1× and 8.3e-5 at 1.2×. The path between the original and the EMA also has a barrier (9.5e-5 at the midpoint), so the EMA is not a nearby refinement of the original weights; fine-tuning moved to a different, better point.
+
+Outputs:
+- `best/model.pt`: the selected weights, in `train.py` format.
+- `summary.json`: every candidate.
+- `candidates.png`
+- `test_error_hist.png`
+- `finetune_curves.png`
+- `rebasin/rebasin_results.json`
+- The branch checkpoints (`branches/`) are git-ignored; `python weight_space.py finetune` recreates them.
+
 ## Cross-code anomaly detection (`anomaly.py`, `runs/anomaly/`)
 
 One autoencoder is trained per radiative-transfer code. It is then tested on held-out planets from its own code (normal) and from the other two codes (anomalous).
